@@ -1,0 +1,47 @@
+#---------------------------------------------------
+# Configuration parameters for accessing database 
+#
+#
+#---------------------------------------------------
+
+
+#Older database configs
+#hostname=localhost
+#user=flagwing
+#password=allflags
+#database=dcoda_acme
+
+#Older database configs
+#--------------------------
+##hostname=sql5c40f.carrierzone.com 
+##user=8key4nowmy173782
+#password=dococt99
+#database=DCODA_ACME_8key4nowmy173782
+
+#SQLite3
+#-------
+hostname=
+user=
+password=
+database=dcoda_acme.webMarks
+dbdriver=dbi:SQLite:dbname
+
+#Mysql
+#-------
+#hostname=localhost
+#user=dococt
+#password=dococt
+#database=dcoda_acme
+#dbdriver=dbi:mysql
+
+
+#Postgres
+#-------
+#hostname=localhost
+#user=dococt
+#password=dococt
+#database=dcoda_acme
+#dbdriver=dbi:Pg
+
+#Postgres uses TIMESTAMP in place of DATETIME and valid date range cannot be 0000-00-00 00:00:00 
+#but can be 1901-01-01 00:00:00 more complex .. BC and AD 

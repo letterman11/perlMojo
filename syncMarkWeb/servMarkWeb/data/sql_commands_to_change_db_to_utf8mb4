@@ -1,0 +1,11 @@
+# for existing old databases of mysql pre 5.5 or so
+# For each database: 
+	ALTER DATABASE database_name CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+# For each table: 
+	ALTER TABLE table_name CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+#  may not not be necessary
+# For each column: 
+	ALTER TABLE table_name MODIFY column_name VARCHAR(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+

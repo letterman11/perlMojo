@@ -1,0 +1,41 @@
+#---------------------------------------------------
+# Configuration parameters for accessing database 
+#
+#
+#---------------------------------------------------
+
+#hostname=
+#user=
+#password=
+#database=dcoda_acme
+#dbdriver=dbi:SQLite:dbname
+#database=/home/angus/dcoda_net/plack_home/sessionDB
+
+#
+#hostname=localhost
+#user=flagwing
+#password=allflags
+#database=dcoda_acme
+#
+##hostname=sql5c40f.carrierzone.com 
+##user=8key4nowmy173782
+#password=dococt99
+#database=DCODA_ACME_8key4nowmy173782
+
+#Mysql HP
+#-----------
+#hostname=localhost
+#user=dococt
+#password=dococt
+#database=dcoda_acme
+#port=3306
+#dbdriver=dbi:mysql
+
+#Mysql laptop
+#----------------
+hostname=192.168.1.33
+user=dococt
+password=dococt
+database=dcoda_acme
+port=3306
+dbdriver=dbi:mysql

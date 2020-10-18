@@ -1,0 +1,32 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title> WebMarks Application </title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
+<link rel="shortcut icon" href="/dcoda.net/gen_rsrc/dc.ico">
+<link rel="icon" href="/images/dc.ico">
+<link rel="stylesheet" href="/style.css" type="text/css">
+</head>
+<body>
+<div id="main">
+ <div id="header">
+  <h1 class="left"> <a href="/webMarks"> WEBMARKS </a></h1>
+  <a href="/webMarks"> <img class="banner_image" alt="dcoda logo" src="/DCBANNER_CROP2_219_31_2.jpg" /> </a>
+ </div>
+ <div class="landing">
+     <form name="credentials" class="credentials" method="POST" action="/authorizeCred">
+       <ul>
+	<li style="font-size:30px; padding-bottom:10px;"> ENTER CREDENTIALS </li>
+	<li style="font-size:24px;"> USER NAME: <input name="user_name" type="text"> </li>
+	<li style="font-size:24px;"> PASSWORD: <input name="user_pass" type="password"> </li>
+	<li style="padding:10px 0px 0px 5px;font-size:12px;"> Not Registered ? 
+		<a style="text-decoration:underline" onclick="document.location='http://localhost:3000/registration'"> Register </a> </li>
+	<li style="float:right; font-size:18px; color: <%= $colorStyle %>;"> <%= $displayText %>  <%= $userName %> </li>
+	<li style="position:absolute; top:140px; right:5px; padding-top:30px; padding-left:10px;"> <input name="submit" type="submit" value="Submit" style="font-size:10pt;"> </li>
+       </ul>
+     </form>
+ </div>
+ </div>
+</body>
+</html>
