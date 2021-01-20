@@ -8,7 +8,7 @@
 
 use strict;
 use lib "/home/angus/perlProjects/syncMarkWeb/clientMarkWeb";
-use lib "/home/angus/dcoda_net/lib";
+#use lib "/home/angus/dcoda_net/lib";
 
 use mark_init;
 use IO::Socket;
@@ -33,7 +33,7 @@ my %optctl = (trace =>\$trace, tracefile =>\$tracefile);
 my $remoteHost =	$mark_init::confg{BOOKMAN}->{remoteHost};
 my $remotePort =	$mark_init::confg{BOOKMAN}->{remotePort};
 my $timeOut =		$mark_init::confg{BOOKMAN}->{timeOut};
-my $flags =			$mark_init::confg{BOOKMAN}->{flags};
+my $flags =		$mark_init::confg{BOOKMAN}->{flags};
 my $bufferSize =	$mark_init::confg{BOOKMAN}->{bufferSize};
 my $bmFileName =	$mark_init::confg{BOOKMAN}->{bmFileName};
 my $sleepInterval =	$mark_init::confg{BOOKMAN}->{sleepInterval};
@@ -158,7 +158,7 @@ SQL_SEL
 
 	my $rowcount = $sth->rows;	
 
-    my $userID;
+	my $userID;
 
 	LOG "-----------------INSERTDB CLient Comparison Routine Begin -----------------";
 	
@@ -286,8 +286,13 @@ LOG "****** LOGGING INITIATED *******\n";
 while (1) {
 
 	LOG "=" x 120;
+	LOG  "=" x int((120 - 1)/2) . "@" . "=" x int((120-1)/2);
+	LOG  "=" x int((120 - 3)/2) . "@@@" . "=" x int((120-3)/2);
+	LOG  "=" x int((120 - 5)/2) . "@@@@@" . "=" x int((120-5)/2);
 	LOG "=============================== Start     ". date_time() . " =========================================================";
-	LOG "=" x 120;
+	LOG  "=" x int((120 - 5)/2) . "@@@@@" . "=" x int((120-5)/2);
+	LOG  "=" x int((120 - 3)/2) . "@@@" . "=" x int((120-3)/2);
+	LOG  "=" x int((120 - 1)/2) . "@" . "=" x int((120-1)/2);
 
 	mark_init::read_config();
 
@@ -298,6 +303,7 @@ while (1) {
 	my $socket = IO::Socket::INET->new( PeerAddr    => $remoteHost,
                                                 PeerPort        => $remotePort,
                                                 Proto           => "tcp",
+						#Timeout           => 8,
                                                 Type            => SOCK_STREAM)
                                                 or LOG "Coudn't connect to $remoteHost:$remotePort : $@\n"
                                                 and die "Coudn't connect to $remoteHost:$remotePort : $@\n";
@@ -346,6 +352,13 @@ while (1) {
 	my $bmBuffer;
 
 	LOG "at begin of loop from server";
+	## new value for timeout
+	## to test for failure
+	##
+	LOG $socket->timeout() . " Socket Timeout";
+	$socket->timeout(5);
+	LOG $socket->timeout() . " Socket Timeout Set";
+	###
 	do {
 
 		$bmData = ();
@@ -384,6 +397,7 @@ while (1) {
 
 	
 	$socket->close();
+	#$socket->shutdown();
 	LOG "=" x 120;
 	LOG "=============================== Complete. ".  date_time(). " =========================================================";
 	LOG "=" x 120;
