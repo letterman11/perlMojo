@@ -282,7 +282,7 @@ sub CLOSESOCK
 
 		}	
 		#while(!$EOF);
-		while(!$EOF || $buffer_loops > 4000);
+		while(!$EOF && $buffer_loops < 4000);
 		$buffer_loops=0;
 	
 		LOG "AFTER CALLS OF CLIENT RECV";
