@@ -46,6 +46,11 @@ h1 a {
 	border:none;
 }
 
+.banner_image_left {
+	float:left;
+	border:none;
+}
+
 .tab_spans {
 	width:100px;
 	/* border:solid 1px blue; */
@@ -168,7 +173,7 @@ h1 a {
 	position:relative;
 	width:545px;
 /*	width:300px; */
-	height:65px;
+	height:67px;
 /*	height:10px; */
 }
 

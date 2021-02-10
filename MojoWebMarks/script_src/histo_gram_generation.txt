@@ -1,0 +1,11 @@
+
+
+1 -> dictionary %elimdups with key as title and values as array of url and date
+2 -> loop through keys ("title") of dictionary and split into token @words array each time
+3 -> skip empty/non-desired tokens words 
+4 -> add word key to dictionary markHist if key does not exist and create count 1 
+5 -> else increase count for key by one 
+
+unpack ST into for loops then put back
+
+

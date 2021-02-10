@@ -4,8 +4,13 @@ use Mojolicious::Lite;
 require "/home/angus/perlProjects/MojoWebMarks/JJExecPageSQL.pl";
 require "/home/angus/perlProjects/MojoWebMarks/SQLStrings.pl";
 use lib '/home/angus/perlProjects/MojoWebMarks';
-use lib '/home/angus/dcoda_net/private/webMarks/script_src';
+use lib '/home/angus/perlProjects/MojoWebMarks/script_src';
+use lib '/home/angus/dcoda_net/lib';
 use GenMarksMojo;
+use GenError;
+app->plugin('Config');
+
+
 #############################
 #external dependencies below 
 #amongst others
@@ -14,6 +19,7 @@ use GenMarksMojo;
 use Util;
 use Error;
 use DbConfig;
+use DbGlob;
 
 ###################
 # templates#####
@@ -27,20 +33,24 @@ our %tabMap = ('tab_AE',1,'tab_FJ',2,'tab_KP',3,'tab_QU',4,'tab_VZ',5,'tab_SRCH_
 our $DEBUG;
 our $NO_HEADER;
 
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+our $dbConf = "/home/angus/perlProjects/MojoWebMarks/stockDbConfig.dat"; #@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 ###### Global Database Handle ##########################################################
 # switching to main package which is available interpreter wide ####
 package main 
 {
-	our $dbc = DbConfig->new("/home/angus/perlProjects/MojoWebMarks/stockDbConfig.dat");
-#	our $dbc = DbConfig->new();
-	our $dbh = $dbc->connect()
+	our $dbg = DbGlob->new($dbConf);
+	our $dbh = $dbg->connect()
 		or GenError->new(Error->new(102))->display() and 
-				die "Cannot Connect to Database $DbConfig::errstr\n";
-	require '/home/angus/dcoda_net/cgi-bin/webMarks/cgi-bin/gen_histo_gram_multi.pl';
+				die "Cannot Connect to Database $DbGlob::errstr\n";
+	require '/home/angus/perlProjects/MojoWebMarks/gen_histo_gram_multi.pl';
 }
 ##########################################################################################
 
+
+#################################################################3
 ############################################
 # AuthorizeCred was put before general *under* method to AVOID *under* call
 # post '/authorizeCred' => \&authorCredFunc;
@@ -95,7 +105,7 @@ get '/tabView' =>  \&index;
 post '/searchWB' => \&indexSearch;
 post '/registrationAuth' => \&regAuth;
 post '/insertMark' => \&insert_mark;
-post 'deltaPass' => \&deltaPass;
+post '/deltaPass' => \&deltaPass;
 ##############################################################
 
 ### Helper Methods for routes ###############################
@@ -107,7 +117,7 @@ helper mod_passwd => \&mod_passwd;
 helper sessionReady => \&sessReady;
 helper renderMainView => \&renderMainView;
 helper exec_page => \&exec_page;
-helper gen_optionListDiv => \&main::gen_optionListDiv;
+#helper gen_optionListDiv => \&main::gen_optionListDiv;
 #############################################################
 
 #############################################################
@@ -116,14 +126,12 @@ helper gen_optionListDiv => \&main::gen_optionListDiv;
 sub index {
 	my $c = shift;	# the mojolicious controller object
 					# first arg to routing methods
-	print STDERR "HelloWorld index\n";
 	#?? GenMarksMojo->new()->renderMainView();
 	$c->renderMainView();
 }
 
 sub indexSearch {
 	my $c = shift;
-	print STDERR "HelloWorld index\n";
 	#?? GenMarksMojo->new()->renderMainView();
 	$c->renderMainView();
 }
@@ -146,8 +154,6 @@ sub registration
 	my $c = shift;
 	#?? GenMarksMojo->new()->renderRegistrationView();
 	$c->render(template => 'class_registration', format => 'html');
-
-
 }
 
 sub regAuth
@@ -155,12 +161,11 @@ sub regAuth
 	my $c = shift;
 
 	my $callObj = Util::formValidation($c);	
-	print STDERR $callObj, " call objects \n";
-	print STDERR $callObj->{ERRCOND}, " error call objects \n";
 		
 	if(ref $callObj eq 'Error')
 	{
-		$c->stash( errText => "Failed Validation");
+		$c->stash( errText => $callObj->errText);
+		#$c->stash( errText => "Failed Validation");
 		$c->render(template => 'class_registration', format => 'html') 
 		#GenMarks->new()->genRegistration($callObj);
 	}
@@ -172,21 +177,26 @@ sub regAuth
 		my $partID = substr(genSessionID(),0,5);
 		my $userID = $partUserName."_".$partID;
 
+		my $dbg = DbGlob->new($dbConf);
+	 	my $dbh = $dbg->connect()
+			or GenError->new(Error->new(102))->display() and die "Cannot Connect to Database $DbGlob::errstr\n";
+	
+
 		my $insert_sql_str = "INSERT INTO WM_USER (USER_ID,USER_NAME,USER_PASSWD,EMAIL_ADDRESS) VALUES (" . 
 			"'$userID','$sqlHash->{userName}','$sqlHash->{password}','$sqlHash->{email}')";
 
 		eval {
 	
-			my $sth = $::dbh->prepare($insert_sql_str);
+			#my $sth = $::dbh->prepare($insert_sql_str);
+			my $sth = $dbh->prepare($insert_sql_str);
 			$sth->execute();
 
 		};
 
 		if ($@) 
 		{
-			$c->stash( errText => "Failed User Creation");
-			$c->render(template => 'class_defaultpage', format => 'html'); 
-			#GenMarks->new()->genRegistration(Error->new(120));
+			$c->stash( colorStyle => "red", errText => $DbGlob::errstr);
+			$c->render(template => 'class_registration', format => 'html'); 
 		}
 		else
 		{
@@ -202,7 +212,9 @@ sub regAuth
 sub authorCredFunc
 {
 	my $c = shift;
+
 	my ($user_id,$user_name) = $c->pre_auth();
+
 	print STDERR $user_id , " User ID " . @{[caller(2)]}[3] . " \n";
 	#!!!additional logic for already present session needed
 	######################################################
@@ -212,7 +224,7 @@ sub authorCredFunc
 	}
 	else
 	{   
-		$c->stash(colorStyle => "black", userName => "", displayText => ""); 
+		$c->stash(colorStyle => "red", userName => "", displayText => "Failed Login"); 
 		$c->render(template => 'class_defaultpage', format => 'html');
 		return 0;
 	}
@@ -231,19 +243,20 @@ sub insert_mark
 	my $user_id = $c->session('wmUserID');
 	my $title = $c->param('mark_title');
 	my $url = $c->param('mark_url');
-    print STDERR $title, " mk title\n";
-    print STDERR $url, " mk URL\n";
 
-	return Error->new(151) if ((not isset($title)) || (not isset($url)));
+	if ((not isset($title)) || (not isset($url))) 
+	{
+		 $c->renderMainView(Error->new(151));
+	     return 0;
+	}
 
 	my $unix_epochs = time;	
 	#use antique mozilla time format (1000 * 1000) unix epoch seconds => microseconds 
 	my $dateAdded = $unix_epochs * (1000 * 1000);
 
-	my $dbc = DbConfig->new();
-
-	 my $local_dbh = $dbc->connect()
-		or GenError->new(Error->new(102))->display() and die "Cannot Connect to Database $DbConfig::errstr\n";
+	my $dbg = DbGlob->new($dbConf);
+	my $local_dbh = $dbg->connect()
+		or GenError->new(Error->new(102))->display() and die "Cannot Connect to Database $DbGlob::errstr\n";
 
 
 	my ($tbl1MaxId) = $local_dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
@@ -300,7 +313,12 @@ sub deltaPass
     }
     else
     {
-        my $rc = $::dbh->do("update WM_USER set user_passwd='" . $usr_pass . "'  where user_name='" . $usr_name . "' ");
+		my $dbg = DbGlob->new($dbConf);
+		my $dbh = $dbg->connect()
+			or GenError->new(Error->new(102))->display() and die "Cannot Connect to Database $DbGlob::errstr\n";
+
+        my $rc = $dbh->do("update WM_USER set user_passwd='" . $usr_pass . "'  where user_name='" . $usr_name . "' ");
+
         if(not defined($rc))
         {
             $c->renderMainView(Error->new(2000));   
@@ -309,6 +327,7 @@ sub deltaPass
         {
             $c->renderMainView();   
        }
+	$dbh->disconnect();
     }
 
 }
@@ -332,12 +351,13 @@ sub pre_auth
 	}
 
 	### error checking ????? ##############
-	my $sth = $::dbh->prepare($exec_sql_str);
+	my $dbg = DbGlob->new($dbConf);
+    my $dbh = $dbg->connect();
+	my $sth = $dbh->prepare($exec_sql_str);
 	$sth->execute();
 	my @user_row = $sth->fetchrow_array;
 	my $row_count = $sth->rows;
 	### error checking ????? ##############
-	print STDERR  $$, "###### ", $user_row[1], " BOOOO #########\n" if($DEBUG);
 	return ($user_row[0],$user_row[1],$usr_pass);
 }
 
@@ -346,7 +366,6 @@ sub pre_auth
 sub authorize
 {
 	my $c = shift;
-	print STDERR $c , " Controller  \n";
 	my $host = undef;
 	my $user_id = shift;
 	my $user_name = shift;
@@ -379,20 +398,12 @@ sub renderMainView
 }
 
 #helper method
-sub tabTable 
-{
-    return;	
-}
-
-#helper method
 sub sessionReady
 {
 	my $c = shift;
 	my $sessionID = $c->session->{wmSessionID}; 
 	if (defined($sessionID) && ($sessionID !~ /^\s*\t*$/)) 
 	{
-		print STDERR $sessionID, " SessionID \n"; 
-		print STDERR $c->session->{wmUserID}, " User ID \n"; 
 		return 1;
 	}
 	else
