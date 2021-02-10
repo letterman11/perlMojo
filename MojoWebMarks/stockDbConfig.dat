@@ -23,12 +23,20 @@
 hostname=
 user=
 password=
-database=dcoda_acme.webMarks
+database=/home/angus/dcoda_net/cgi-bin/webMarks/cgi-bin/dcoda_acme.webMarks
 dbdriver=dbi:SQLite:dbname
 
 #Mysql
 #-------
 #hostname=localhost
+#user=dococt
+#password=dococt
+#database=dcoda_acme
+#dbdriver=dbi:mysql
+
+#Mysql laptop
+#-------
+#hostname=192.168.1.33
 #user=dococt
 #password=dococt
 #database=dcoda_acme

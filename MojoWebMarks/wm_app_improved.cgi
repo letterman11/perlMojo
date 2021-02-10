@@ -2,7 +2,6 @@
 
 use strict;
 use lib "/home/angus/dcoda_net/private/webMarks/script_src";
-#require '/home/angus/dcoda_net/cgi-bin/webMarks/cgi-bin/gen_histo_gram.pl';
 require '/home/angus/dcoda_net/cgi-bin/webMarks/cgi-bin/gen_histo_gram_multi.pl';
 require '/home/angus/perlProjects/MojoWebMarks/ExecPageSQL.pl';
 use globals;
