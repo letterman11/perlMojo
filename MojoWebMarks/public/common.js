@@ -85,7 +85,7 @@ function setSearchTerms()
 {      
      var searchBx = parent.top.document.getElementById('searchBx');
      parent.top.document.getElementById('searchTerms').innerHTML = searchBx.value;
-     setCookie('searchTerms', searchBxTitle.value);
+     setCookie('searchTerms', searchBx.value);
      setCookie('search_submission', search_submission);
 }
 
