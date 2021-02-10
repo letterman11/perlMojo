@@ -6,7 +6,6 @@
 sub exec_page
 {
 	my $c = shift;
-	print STDERR $c , " Mojo Class ??\n";
 	my $user_id = $c->session('wmUserID');
 	#my $user_id = shift;
 	my $user_name = $c->session('wmUserName');
@@ -188,18 +187,23 @@ sub exec_page
 #########
 
     print STDERR "Exec webMark SQL " . $executed_sql_str, "\n";
+    my $dbg = DbGlob->new();
+    my $dbh = $dbg->connect() or die "$!";
     eval {
-    $sth = $::dbh->prepare($executed_sql_str);
-    $sth->bind_param(1,$user_id);
-    $sth->execute();
+    	$sth = $dbh->prepare($executed_sql_str);
+    	#$sth = $::dbh->prepare($executed_sql_str);
+    	$sth->bind_param(1,$user_id);
+    	$sth->execute();
     };
 
 	%tabMap = reverse %tabMap;
 
     if ($@) 
     {
+		#constructor args ->	#1,controller; #2,tabMap; #3,dataRows; #4,rowCount, #5,ErrObject
 	   $genMarksMojo = GenMarksMojo->new($c,$tabMap{tabtype},undef,undef,Error->new(2000));	
-	   $genMarksMojo->genPage($user_name,$sort_crit,\%tabMap);
+	   #$genMarksMojo->genPage($user_name,$sort_crit,\%tabMap);
+	   $genMarksMojo->genPage($user_id,$sort_crit,\%tabMap);
     }
 	else
 	{
@@ -209,7 +213,8 @@ sub exec_page
 		print STDERR $row_count, " DB rowcount\n";
 	
 	   $genMarksMojo = GenMarksMojo->new($c,$tabMap{$tabtype},$data_refs,$row_count,$errObj);
-	   $genMarksMojo->genPage($user_name,$sort_crit,\%tabMap);
+	   #$genMarksMojo->genPage($user_name,$sort_crit,\%tabMap);
+	   $genMarksMojo->genPage($user_id,$sort_crit,\%tabMap);
     }
 ############
 # End of SQL Execution
