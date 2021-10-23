@@ -43,11 +43,14 @@ sub gen_histogram
 
 		foreach (@words)
 		{
-			next if /(?:(\ba\b)|(\bfrom\b)|(\byour\b)|(\bHow\b)|(\bBE\b)|(\bas\b)|(\bthe\b)|(\bby\b)|(\bon\b)|(\band\b)|(\bis\b)|(\bFor\b)|(\bwith\b)|(\bIn\b)|(\bto\b)|(\bof\b)|(\b(\s+)\b)|(-|\+)|(\|)|[&-:><'#])/i;
+			next if /(?:(\ba\b)|(\bfrom\b)|(\byour\b)|(\bHow\b)|(\bBE\b)|(\bas\b)|(\bthe\b)|(\bby\b)|(\bon\b)|(\band\b)|(\bis\b)|(\bFor\b)|(\bwith\b)|(\bIn\b)|(\bto\b)|(\bof\b)|(\b(\s+)\b)|(-|\+)|(\|)|[&\-:><'#])/i;
 			next if /\b[[:cntrl:]]+\b/;
 			next if not /[\x00-\x7f]/;
+			next if length($_) < 3 and $_ =~ /\d/;
+	
 			s/\s+$//g;
 			s/^\s+//g;
+
 			if (exists($markHist{$_}))
 			{
 				$markHist{$_}->{count}++;
