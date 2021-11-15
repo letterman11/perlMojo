@@ -9,10 +9,10 @@ sub gen_histogram
 	my ($title,$url,$dateAdded) = (1,0,2);
 
 	### error checking ????? ##############
-	my $dbg = DbGlob->new();
-	$dbh = $dbg->connect();
-	#my $sth = $main::dbh->prepare($hist_sql_all_str);
-	my $sth = $dbh->prepare($hist_sql_all_str);
+#	my $dbg = DbGlob->new();
+#	$dbh = $dbg->connect();
+	my $sth = $::dbh->prepare($hist_sql_all_str);
+	#my $sth = $dbh->prepare($hist_sql_all_str);
 	$sth->bind_param(1,$userID);
 	$sth->execute();
 	my $data_refs = $sth->fetchall_arrayref;
