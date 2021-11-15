@@ -1,6 +1,6 @@
 ############################################
 ## Mojo Modified ExecPageSQL function 	#### 
-## JJExecPageSQL						####
+## JJExecPageSQL			####
 ## standalone CGI function to be required ##
 ############################################
 sub exec_page
@@ -187,11 +187,9 @@ sub exec_page
 #########
 
     print STDERR "Exec webMark SQL " . $executed_sql_str, "\n";
-    my $dbg = DbGlob->new();
-    my $dbh = $dbg->connect() or die "$!";
+
     eval {
-    	$sth = $dbh->prepare($executed_sql_str);
-    	#$sth = $::dbh->prepare($executed_sql_str);
+    	$sth = $::dbh->prepare($executed_sql_str);
     	$sth->bind_param(1,$user_id);
     	$sth->execute();
     };
