@@ -7,18 +7,18 @@
 <META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
 <link rel="shortcut icon" href="/dcoda.net/gen_rsrc/dc.ico">
 <link rel="icon" href="/images/dc.ico">
-<link rel="stylesheet" href="/css/style.css" type="text/css">
+<link rel="stylesheet" href="/static/mojo/css/mojo_style.css" type="text/css">
 </head>
 
 <body>
 <div id="main">
  <div id="header">
   <!-- <h1 class="left"> <a href="/webMarks"> WEBMARKS </a></h1> -->
-  <a href="/webMarks"> <img class="banner_image_left" alt="dcoda logo" src="/webmarks_orange.png" /> </a>
-  <a href="/webMarks"> <img class="banner_image" alt="dcoda logo" src="/images/DCBANNER_CROP2_219_31_2.jpg" /> </a>
+  <a href="/mojoMarks/webMarks"> <img class="banner_image_left" alt="dcoda logo" src="/webmarks_orange.png" /> </a>
+  <a href="/"> <img class="banner_image" alt="dcoda logo" src="/images/DCBANNER_CROP2_219_31_2.jpg" /> </a>
  </div>
  <div class="registration">
-     <form name="registration"  method="POST" action="/registrationAuth">
+     <form name="registration"  method="POST" action="/mojoMarks/registrationAuth">
        <ul>
 	<li style="font-size:30px; padding-bottom:10px;"> REGISTER </li>
 	<li> ENTER USER NAME: <input name="user_name" type="text"> </li>
