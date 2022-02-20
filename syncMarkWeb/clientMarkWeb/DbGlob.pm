@@ -29,7 +29,7 @@ $::attr2 = {
 sub new 
 {
 	my $class = shift;
-	my %config = {};
+	my %config = ();
 
 	bless \%config, $class;
 
