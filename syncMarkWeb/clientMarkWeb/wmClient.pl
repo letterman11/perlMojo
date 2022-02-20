@@ -40,6 +40,8 @@ my $sleepInterval =	$mark_init::confg{BOOKMAN}->{sleepInterval};
 my $logFile =		$mark_init::confg{BOOKMAN}->{logFile};
 my $changeTest =	$mark_init::confg{BOOKMAN}->{change};
 my $bmDB = "nothing";
+my $maxRuns =		$mark_init::confg{BOOKMAN}->{runs};
+my $run =           0;
 
 my $dbConFile = "/home/angus/perlProjects/syncMarkWeb/clientMarkWeb/wmDBConfig.dat";
 
@@ -63,6 +65,10 @@ sub LOG
 }
 
 
+sub close_log
+{
+    close(LOG_H) or warn "Problems closing LOG file handle";
+}
 
 sub queryDB_bookmarks
 {
@@ -402,6 +408,13 @@ while (1) {
 	LOG "=============================== Complete. ".  date_time(). " =========================================================";
 	LOG "=" x 120;
     
+    if (++$run == $maxRuns) 
+    {
+        LOG "@@@@@@@@ Exiting client script @@@@@@@@@@";
+        close_log(); 
+        exit(0);
+    }
+
 	sleep ($mark_init::confg{BOOKMAN}->{sleepInterval});	
     
 }	
