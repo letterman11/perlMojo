@@ -3,11 +3,11 @@
 use Mojolicious::Lite;
 require "/home/angus/perlProjects/MojoWebMarks/JJExecPageSQL.pl";
 require "/home/angus/perlProjects/MojoWebMarks/SQLStrings.pl";
+use lib '/home/angus/dcoda_net/lib';
 use lib '/home/angus/perlProjects/MojoWebMarks';
 use lib '/home/angus/perlProjects/MojoWebMarks/script_src';
-use lib '/home/angus/dcoda_net/lib';
-use GenMarksMojo;
 use GenError;
+use GenMarksMojo;
 app->plugin('Config');
 
 
@@ -81,13 +81,11 @@ under '/' =>  sub {
 		$c->stash( colorStyle=>"red", displayText=>"", errText => "");
 		if ($c->match->endpoint->name =~ /registration/) 
 		{ 	
-			#?? GenMarksMojo->new()->renderRegistrationView();
 			$c->render(template=> 'class_registration', format => 'html'); 
 			return 1;
 		} 
 		else
         {
-			#?? GenMarksMojo->new()->renderDefaultView();
 			$c->render(template=> 'class_defaultpage', format => 'html');
 		}  
 	return undef;
@@ -126,13 +124,11 @@ helper exec_page => \&exec_page;
 sub index {
 	my $c = shift;	# the mojolicious controller object
 					# first arg to routing methods
-	#?? GenMarksMojo->new()->renderMainView();
 	$c->renderMainView();
 }
 
 sub indexSearch {
 	my $c = shift;
-	#?? GenMarksMojo->new()->renderMainView();
 	$c->renderMainView();
 }
 
@@ -152,7 +148,6 @@ sub logout {
 sub registration
 {
 	my $c = shift;
-	#?? GenMarksMojo->new()->renderRegistrationView();
 	$c->render(template => 'class_registration', format => 'html');
 }
 
@@ -177,18 +172,13 @@ sub regAuth
 		my $partID = substr(genSessionID(),0,5);
 		my $userID = $partUserName."_".$partID;
 
-		my $dbg = DbGlob->new($dbConf);
-	 	my $dbh = $dbg->connect()
-			or GenError->new(Error->new(102))->display() and die "Cannot Connect to Database $DbGlob::errstr\n";
-	
-
 		my $insert_sql_str = "INSERT INTO WM_USER (USER_ID,USER_NAME,USER_PASSWD,EMAIL_ADDRESS) VALUES (" . 
 			"'$userID','$sqlHash->{userName}','$sqlHash->{password}','$sqlHash->{email}')";
+        my $sth;
 
 		eval {
 	
-			#my $sth = $::dbh->prepare($insert_sql_str);
-			my $sth = $dbh->prepare($insert_sql_str);
+			$sth = $::dbh->prepare($insert_sql_str);
 			$sth->execute();
 
 		};
@@ -203,7 +193,6 @@ sub regAuth
 			#authorize()
 			$c->stash( colorStyle => "black", userName => $local_user_name, displayText => "Registration Successful");
 			$c->render(template => 'class_defaultpage', format => 'html') 
-			#GenMarks->new()->genDefaultPage("Registration Successful: $local_user_name");		
 				
 		}
 	}
@@ -254,9 +243,7 @@ sub insert_mark
 	#use antique mozilla time format (1000 * 1000) unix epoch seconds => microseconds 
 	my $dateAdded = $unix_epochs * (1000 * 1000);
 
-	my $dbg = DbGlob->new($dbConf);
-	my $local_dbh = $dbg->connect()
-		or GenError->new(Error->new(102))->display() and die "Cannot Connect to Database $DbGlob::errstr\n";
+	my $local_dbh = $::dbh;
 
 
 	my ($tbl1MaxId) = $local_dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
@@ -281,7 +268,10 @@ sub insert_mark
 
 	if(not defined($rc)) {
 		print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
-		$local_dbh->disconnect;
+
+        # @@@@@@@@@ No disconnect
+		# $local_dbh->disconnect;
+        # @@@@@@@@@
 		$c->renderMainView(Error->new(150)); 
 		return 0;
 	}
@@ -294,7 +284,10 @@ sub insert_mark
 
 	if(not defined($rc2)) {
 		print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
-		$local_dbh->disconnect;
+        
+        # No disconnect
+		# $local_dbh->disconnect;
+        # @@@@@@@@@@@@@@@@@
 		$c->renderMainView(Error->new(150)); 
 		return 0;
 	}
@@ -313,9 +306,7 @@ sub deltaPass
     }
     else
     {
-		my $dbg = DbGlob->new($dbConf);
-		my $dbh = $dbg->connect()
-			or GenError->new(Error->new(102))->display() and die "Cannot Connect to Database $DbGlob::errstr\n";
+		my $dbh = $::dbh;
 
         my $rc = $dbh->do("update WM_USER set user_passwd='" . $usr_pass . "'  where user_name='" . $usr_name . "' ");
 
@@ -327,7 +318,9 @@ sub deltaPass
         {
             $c->renderMainView();   
        }
-	$dbh->disconnect();
+    # No disconnect
+	# $dbh->disconnect();
+    # @@@@@@@@@@@@@@@@@@
     }
 
 }
@@ -351,8 +344,7 @@ sub pre_auth
 	}
 
 	### error checking ????? ##############
-	my $dbg = DbGlob->new($dbConf);
-    my $dbh = $dbg->connect();
+    my $dbh = $::dbh;
 	my $sth = $dbh->prepare($exec_sql_str);
 	$sth->execute();
 	my @user_row = $sth->fetchrow_array;
