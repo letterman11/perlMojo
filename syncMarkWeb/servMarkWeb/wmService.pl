@@ -41,6 +41,7 @@ my $logFile =		$mark_init::confg{BOOKMAN}->{logFile};
 ##### DEBUG #########
 my $buffer_loops =0;
 my $bufferExit = 3500;
+my $clientTimeOut = 15;
 ##### DEBUG #########
 
 my $dbConFile = "/home/ubuntu/perlProjects/syncMarkWeb/servMarkWeb/wmDBConfig.dat";
@@ -98,6 +99,8 @@ sub queryDB_bookmarks
 	foreach my $row (@$arrayrefs) 
 	{
 
+			$row->[$link] =~ s/\s*//g; # fix for dupes
+
 			my $url = $row->[$link];
 			$webMarks{$url} = {} unless  $webMarks{$url};
 			$webMarks{$url}->{$ATTR{LINK}} = $row->[$link];
@@ -144,7 +147,7 @@ sub insertDB_bookmarks
 		{
 			# new feature to insert not null user_id
 			#
-            $userID = $row->[$user_id]; 
+    		        $userID = $row->[$user_id]; 
 			if ($row->[$link] eq $urlKey)
 			{
 				$matchFlag = 1;
@@ -192,11 +195,11 @@ sub insertDB_bookmarks
 sub build_data_from_buffer
 {
         my $nwBuffer = shift;
-		my $bmBuffer = shift;
+	my $bmBuffer = shift;
 		
         $$bmBuffer .= $nwBuffer;
 	$buffer_loops++;
-        return $true if $nwBuffer =~ /$END_DATA/;
+        return $true if $nwBuffer =~ /$END_DATA/ || $$bmBuffer =~ /$END_DATA/ms;
         return $false;
 
 }
@@ -216,7 +219,7 @@ sub extract_data_from_buffer
 
 		my @bmSegments = split(/\t+/, $line);
 
-		$bmSegments[$link] =~ s/\s*\t*\n*//;
+		$bmSegments[$link] =~ s/\s*\t*\n*//g; # fix for dupes add g modifier
 
 		next if not defined $bmSegments[$link];
 
@@ -262,8 +265,8 @@ sub CLOSESOCK
 
 	IO::Socket::Timeout->enable_timeouts_on($client);
 	
-	$client->read_timeout(8);
-	$client->write_timeout(8);
+	$client->read_timeout($clientTimeOut);
+	$client->write_timeout($clientTimeOut);
 
 	LOG "=" x 120;
 	LOG "=============================== Start     ". date_time() . " =========================================================";
@@ -301,8 +304,9 @@ sub CLOSESOCK
 
 			if ($buffer_loops >= $bufferExit) 
 			{
-				last;
+				LOG $bmBuffer;
 				LOG "===== EXITING  CLIENT RECV LOOP ==== " . date_time();
+				last;
 			}
 
 		}	
@@ -317,6 +321,8 @@ sub CLOSESOCK
 		#LOG $bmBuffer;
 		LOG "**** END OF RECIEVED MESSAGE **********************************************************************************";
 	
+		$client->shutdown(SHUT_RD);
+
 	        extract_data_from_buffer($bmBuffer); 
 	
 		my $send_msg;
@@ -345,7 +351,7 @@ sub CLOSESOCK
 #		LOG $send_msg;
 #		LOG "**** END OF SENT MESSAGE **************************************************************************************\n";
 	
-		$client->close();
+		$client->shutdown(SHUT_RDWR);
 	
 	
 		#output_bookmarks($bmFileName);
