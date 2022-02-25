@@ -191,6 +191,7 @@ SQL_SEL
 
 		    LOG "-----------------INSERTDB CLient Match Routine Insert Statement Begin -----------------";
 			my $url = $webMarks{$urlKey}->{LINK};
+
 			my $title = $webMarks{$urlKey}->{TEXT};
 			my $dateAdded = $webMarks{$urlKey}->{DATE};
 	        
@@ -217,7 +218,7 @@ SQL_SEL
 			
 			#------- wm_place------------------------
 			my $sql_insert_wm_place = "insert into WM_PLACE (PLACE_ID, URL, TITLE) values (?, ?, ?)";
-
+            
 			my @bind_vals_place = ($tbl2MaxId,
 									$url,
 									$title);
@@ -247,7 +248,7 @@ sub build_data_from_buffer
         my $bmBuffer = shift;
 
         $$bmBuffer .= $nwBuffer;
-        return $true if $nwBuffer =~ /$END_DATA/;
+        return $true if $nwBuffer =~ /$END_DATA/ || $$bmBuffer =~ /$END_DATA/ms;
         return $false;
 
 }
@@ -263,7 +264,7 @@ sub extract_data_from_buffer
 
                 my @bmSegments = split(/\t+/, $line);
 
-                $bmSegments[$link] =~ s/\s*\t*\n*//;
+                $bmSegments[$link] =~ s/\s*\t*\n*//g;   #fix for dupes
 
                 next if not defined $bmSegments[$link];
 
@@ -343,8 +344,6 @@ while (1) {
  	#LOG $send_msg;
 	LOG "**** END LOG OF SENT MESSAGE ************************************************************************";
 	
-	#$socket->send($send_msg) or LOG  "Cannot send to server \n"  and 
-	#			die "Cannot send to server \n";  # this will block until successful send or timeout			
 
 	$socket->send($encoded_send_msg) or LOG  "Cannot send to server \n"  and 
 				die "Cannot send to server \n";  # this will block until successful send or timeout			
@@ -355,7 +354,8 @@ while (1) {
 	my $bmData;
 	my $bmBuffer;
 
-        $socket->timeout(5); 
+    $socket->shutdown(SHUT_WR); # finish sending to server 
+
 	LOG "at begin of loop from server";
 	do {
 
@@ -368,7 +368,6 @@ while (1) {
 		#======== Decoded buffer ----
 
 
-		#$EOF = build_data_from_buffer($bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
 		$EOF = build_data_from_buffer($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
 
 		#debug_println("After recv of socket");
@@ -394,7 +393,7 @@ while (1) {
 	dump_bm() if $DEBUG;
 
 	
-	$socket->close();
+	$socket->shutdown(SHUT_RDWR);
 	LOG "=" x 120;
 	LOG "=============================== Complete. ".  date_time(). " =========================================================";
 	LOG "=" x 120;
