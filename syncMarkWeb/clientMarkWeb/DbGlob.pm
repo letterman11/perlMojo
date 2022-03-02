@@ -29,13 +29,13 @@ $::attr2 = {
 sub new 
 {
 	my $class = shift;
-	my %configHash = ();
-	bless \%configHash, $class;
+	my %config = ();
 
-	my $self =  \%configHash;
-	$self->_initialize($_[0]);	
+	bless \%config, $class;
 
-	return \%configHash;
+	(\%config)->_initialize($_[0]);	
+
+	return \%config;
 }
 
 sub connect

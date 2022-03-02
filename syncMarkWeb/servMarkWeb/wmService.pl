@@ -6,14 +6,17 @@
 #----------------------------------------------------------#
 
 use strict;
-#use lib "/home/angus/perlProjects/webMarksService";
-use lib "/home/angus/perlProjects/syncMarkWeb/servMarkWeb";
+#use lib "/home/ubuntu/perlProjects/webMarksService";
+use lib "/home/ubuntu/perlProjects/syncMarkWeb/servMarkWeb";
 
 use mark_init;
 use IO::Socket;
+use IO::Socket::Timeout;
 use DbGlob;
 use Encode 'encode';
 use Encode 'decode';
+use Errno qw(ETIMEDOUT EWOULDBLOCK);
+
 
 $| = 1;
 my $DEBUG = $ARGV[0] || 0;
@@ -37,9 +40,11 @@ my $logFile =		$mark_init::confg{BOOKMAN}->{logFile};
 
 ##### DEBUG #########
 my $buffer_loops =0;
+my $bufferExit = 3500;
+my $clientTimeOut = 15;
 ##### DEBUG #########
 
-my $dbConFile = "/home/angus/perlProjects/syncMarkWeb/servMarkWeb/wmDBConfig.dat";
+my $dbConFile = "/home/ubuntu/perlProjects/syncMarkWeb/servMarkWeb/wmDBConfig.dat";
 
 my %ATTR = (
                 LINK   => 'href',
@@ -94,6 +99,8 @@ sub queryDB_bookmarks
 	foreach my $row (@$arrayrefs) 
 	{
 
+			$row->[$link] =~ s/\s*//g; # fix for dupes
+
 			my $url = $row->[$link];
 			$webMarks{$url} = {} unless  $webMarks{$url};
 			$webMarks{$url}->{$ATTR{LINK}} = $row->[$link];
@@ -140,7 +147,7 @@ sub insertDB_bookmarks
 		{
 			# new feature to insert not null user_id
 			#
-            $userID = $row->[$user_id]; 
+    		        $userID = $row->[$user_id]; 
 			if ($row->[$link] eq $urlKey)
 			{
 				$matchFlag = 1;
@@ -167,7 +174,9 @@ sub insertDB_bookmarks
 			my $typeID = 1; # needed for WM_BOOKMARK
 			my $parentID = 5; # needed for WM_BOOKMARK_roots
 
-			my $rc = $dbh->do("insert into WM_BOOKMARK (bookmark_id, place_id, title, dateAdded, user_id) values ($tbl1MaxId, $tbl2MaxId," . $dbh->quote($title) . ",'$dateAdded', '$userID')");
+			my $rc = $dbh->do("insert into WM_BOOKMARK (bookmark_id, place_id, title, dateAdded, user_id) values ($tbl1MaxId, $tbl2MaxId," . $dbh->quote($title) 
+			. ",'$dateAdded', '$userID')");
+
 			my $rc2 = $dbh->do("insert into WM_PLACE (place_id, url, title) values ($tbl2MaxId," . $dbh->quote($url) . ", " . $dbh->quote($title) . ")");
 
 			LOG "-----------------INSERTDB Server Match Routine Insert Statement End -----------------";
@@ -186,11 +195,11 @@ sub insertDB_bookmarks
 sub build_data_from_buffer
 {
         my $nwBuffer = shift;
-		my $bmBuffer = shift;
+	my $bmBuffer = shift;
 		
         $$bmBuffer .= $nwBuffer;
 	$buffer_loops++;
-        return $true if $nwBuffer =~ /$END_DATA/;
+        return $true if $nwBuffer =~ /$END_DATA/ || $$bmBuffer =~ /$END_DATA/ms;
         return $false;
 
 }
@@ -210,7 +219,7 @@ sub extract_data_from_buffer
 
 		my @bmSegments = split(/\t+/, $line);
 
-		$bmSegments[$link] =~ s/\s*\t*\n*//;
+		$bmSegments[$link] =~ s/\s*\t*\n*//g; # fix for dupes add g modifier
 
 		next if not defined $bmSegments[$link];
 
@@ -241,17 +250,23 @@ sub CLOSESOCK
 	                                 Type           => SOCK_STREAM,
 	                                 Reuse          => 1,
 	                                 Blocking       => 1,
-	                                 Listen         => 5 )
+	                                 Listen         => 2 )
 	                                 or LOG "Couldn't be a tcp server on port $serverPort : $@\n"
 	                                 and die "Couldn't be a tcp server on port $serverPort : $@\n";
-	
+
+
 	#explicit unicode setting
 	#binmode($server, ":encoding(UTF-8)");
 	#binmode($server);
 
 	LOG "After socket initialization";
 
-	while (($client,$client_address) = $server->accept()) {
+	while ($client = $server->accept()) {
+
+	IO::Socket::Timeout->enable_timeouts_on($client);
+	
+	$client->read_timeout($clientTimeOut);
+	$client->write_timeout($clientTimeOut);
 
 	LOG "=" x 120;
 	LOG "=============================== Start     ". date_time() . " =========================================================";
@@ -264,12 +279,18 @@ sub CLOSESOCK
 		my $EOF=$false;
 		my $bmBuffer;
 		
-		LOG "BEFORE CALLS OF CLIENT RECV";
-	
+		LOG "BEFORE CALLS OF CLIENT RECV: " . $client->peerhost() . " " .  $client->peerport();
+		my $bmData;
+		my $retCode;	
 		do {
-			my $bmData;
+			#my $bmData;
 	
 			$client->recv($bmData, $bufferSize);
+
+			if ( 0+$! == ETIMEDOUT || 0+$! == EWOULDBLOCK ) {
+				last;
+			  }
+
 			#
        			#======== Decoded buffer ----
 		        my $decoded_bmData = decode('UTF-8', $bmData);
@@ -278,11 +299,20 @@ sub CLOSESOCK
 
 			#$EOF = build_data_from_buffer($bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
 	                $EOF = build_data_from_buffer($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
-			LOG "===============================  Outside of build_func  bufferSize: ".  length($bmBuffer).  " buffer loops ".  $buffer_loops . " ". date_time() . "===================================";
+			LOG "===============================  Outside of build_func  bufferSize: ".  length($bmBuffer) 
+			.  " buffer loops ".  $buffer_loops . " ". date_time() . "===================================" if $buffer_loops % 10 == 0;
+
+			if ($buffer_loops >= $bufferExit) 
+			{
+				LOG $bmBuffer;
+				LOG "===== EXITING  CLIENT RECV LOOP ==== " . date_time();
+				last;
+			}
 
 		}	
-		#while(!$EOF);
-		while(!$EOF && $buffer_loops < 4000);
+		while(!$EOF);
+		#while(!$EOF || $buffer_loops < 1500);
+		$bmData = undef;
 		$buffer_loops=0;
 	
 		LOG "AFTER CALLS OF CLIENT RECV";
@@ -291,6 +321,8 @@ sub CLOSESOCK
 		#LOG $bmBuffer;
 		LOG "**** END OF RECIEVED MESSAGE **********************************************************************************";
 	
+		$client->shutdown(SHUT_RD);
+
 	        extract_data_from_buffer($bmBuffer); 
 	
 		my $send_msg;
@@ -319,7 +351,7 @@ sub CLOSESOCK
 #		LOG $send_msg;
 #		LOG "**** END OF SENT MESSAGE **************************************************************************************\n";
 	
-		$client->close();
+		$client->shutdown(SHUT_RDWR);
 	
 	
 		#output_bookmarks($bmFileName);
@@ -338,3 +370,6 @@ sub CLOSESOCK
 
 	$server->shutdown();
 
+	LOG "=" x 120;
+	LOG "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! END SERVER PROGRAMS. ".  date_time(). " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+	LOG "!" x 120;

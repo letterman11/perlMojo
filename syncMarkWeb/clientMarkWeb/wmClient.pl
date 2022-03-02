@@ -7,10 +7,15 @@
 #----------------------------------------------------------#
 
 use strict;
-use lib "/home/angus/perlProjects/syncMarkWeb/clientMarkWeb";
-#use lib "/home/angus/dcoda_net/lib";
+use lib '.';
 
-use mark_init;
+BEGIN {
+    use mark_init;
+    mark_init::read_config();
+}
+
+use lib $mark_init::confg{BOOKMAN}->{libdir};
+
 use IO::Socket;
 use DbGlob;
 use Getopt::Long;
@@ -29,19 +34,20 @@ my $trace;
 my $tracefile;
 my @opts = ("trace=s","tracefile=s");
 my %optctl = (trace =>\$trace, tracefile =>\$tracefile);
+my $run = 0;
+my $bmDB = "nothing";
+
 
 my $remoteHost =	$mark_init::confg{BOOKMAN}->{remoteHost};
 my $remotePort =	$mark_init::confg{BOOKMAN}->{remotePort};
 my $timeOut =		$mark_init::confg{BOOKMAN}->{timeOut};
-my $flags =		$mark_init::confg{BOOKMAN}->{flags};
+my $flags =	    	$mark_init::confg{BOOKMAN}->{flags};
 my $bufferSize =	$mark_init::confg{BOOKMAN}->{bufferSize};
 my $bmFileName =	$mark_init::confg{BOOKMAN}->{bmFileName};
 my $sleepInterval =	$mark_init::confg{BOOKMAN}->{sleepInterval};
+my $maxRuns =		$mark_init::confg{BOOKMAN}->{runs};
 my $logFile =		$mark_init::confg{BOOKMAN}->{logFile};
-my $changeTest =	$mark_init::confg{BOOKMAN}->{change};
-my $bmDB = "nothing";
-
-my $dbConFile = "/home/angus/perlProjects/syncMarkWeb/clientMarkWeb/wmDBConfig.dat";
+my $dbConFile =     $mark_init::confg{BOOKMAN}->{dbConf};
 
 my %ATTR = (
                 LINK   => 'href',
@@ -63,6 +69,10 @@ sub LOG
 }
 
 
+sub close_log
+{
+    close(LOG_H) or warn "Problems closing LOG file handle";
+}
 
 sub queryDB_bookmarks
 {
@@ -158,7 +168,7 @@ SQL_SEL
 
 	my $rowcount = $sth->rows;	
 
-	my $userID;
+    my $userID;
 
 	LOG "-----------------INSERTDB CLient Comparison Routine Begin -----------------";
 	
@@ -181,6 +191,7 @@ SQL_SEL
 
 		    LOG "-----------------INSERTDB CLient Match Routine Insert Statement Begin -----------------";
 			my $url = $webMarks{$urlKey}->{LINK};
+
 			my $title = $webMarks{$urlKey}->{TEXT};
 			my $dateAdded = $webMarks{$urlKey}->{DATE};
 	        
@@ -207,7 +218,7 @@ SQL_SEL
 			
 			#------- wm_place------------------------
 			my $sql_insert_wm_place = "insert into WM_PLACE (PLACE_ID, URL, TITLE) values (?, ?, ?)";
-
+            
 			my @bind_vals_place = ($tbl2MaxId,
 									$url,
 									$title);
@@ -237,7 +248,7 @@ sub build_data_from_buffer
         my $bmBuffer = shift;
 
         $$bmBuffer .= $nwBuffer;
-        return $true if $nwBuffer =~ /$END_DATA/;
+        return $true if $nwBuffer =~ /$END_DATA/ || $$bmBuffer =~ /$END_DATA/ms;
         return $false;
 
 }
@@ -253,7 +264,7 @@ sub extract_data_from_buffer
 
                 my @bmSegments = split(/\t+/, $line);
 
-                $bmSegments[$link] =~ s/\s*\t*\n*//;
+                $bmSegments[$link] =~ s/\s*\t*\n*//g;   #fix for dupes
 
                 next if not defined $bmSegments[$link];
 
@@ -286,13 +297,8 @@ LOG "****** LOGGING INITIATED *******\n";
 while (1) {
 
 	LOG "=" x 120;
-	LOG  "=" x int((120 - 1)/2) . "@" . "=" x int((120-1)/2);
-	LOG  "=" x int((120 - 3)/2) . "@@@" . "=" x int((120-3)/2);
-	LOG  "=" x int((120 - 5)/2) . "@@@@@" . "=" x int((120-5)/2);
 	LOG "=============================== Start     ". date_time() . " =========================================================";
-	LOG  "=" x int((120 - 5)/2) . "@@@@@" . "=" x int((120-5)/2);
-	LOG  "=" x int((120 - 3)/2) . "@@@" . "=" x int((120-3)/2);
-	LOG  "=" x int((120 - 1)/2) . "@" . "=" x int((120-1)/2);
+	LOG "=" x 120;
 
 	mark_init::read_config();
 
@@ -303,7 +309,6 @@ while (1) {
 	my $socket = IO::Socket::INET->new( PeerAddr    => $remoteHost,
                                                 PeerPort        => $remotePort,
                                                 Proto           => "tcp",
-						#Timeout           => 8,
                                                 Type            => SOCK_STREAM)
                                                 or LOG "Coudn't connect to $remoteHost:$remotePort : $@\n"
                                                 and die "Coudn't connect to $remoteHost:$remotePort : $@\n";
@@ -339,8 +344,6 @@ while (1) {
  	#LOG $send_msg;
 	LOG "**** END LOG OF SENT MESSAGE ************************************************************************";
 	
-	#$socket->send($send_msg) or LOG  "Cannot send to server \n"  and 
-	#			die "Cannot send to server \n";  # this will block until successful send or timeout			
 
 	$socket->send($encoded_send_msg) or LOG  "Cannot send to server \n"  and 
 				die "Cannot send to server \n";  # this will block until successful send or timeout			
@@ -351,14 +354,9 @@ while (1) {
 	my $bmData;
 	my $bmBuffer;
 
+    $socket->shutdown(SHUT_WR); # finish sending to server 
+
 	LOG "at begin of loop from server";
-	## new value for timeout
-	## to test for failure
-	##
-	LOG $socket->timeout() . " Socket Timeout";
-	$socket->timeout(5);
-	LOG $socket->timeout() . " Socket Timeout Set";
-	###
 	do {
 
 		$bmData = ();
@@ -370,7 +368,6 @@ while (1) {
 		#======== Decoded buffer ----
 
 
-		#$EOF = build_data_from_buffer($bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
 		$EOF = build_data_from_buffer($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
 
 		#debug_println("After recv of socket");
@@ -396,11 +393,18 @@ while (1) {
 	dump_bm() if $DEBUG;
 
 	
-	$socket->close();
-	#$socket->shutdown();
+	$socket->shutdown(SHUT_RDWR);
 	LOG "=" x 120;
 	LOG "=============================== Complete. ".  date_time(). " =========================================================";
 	LOG "=" x 120;
+
+    if (++$run == $maxRuns) 
+    {
+        LOG "@@@@@@@@ Exiting client script @@@@@@@@@@";
+        close_log(); 
+        exit(0);
+    }
+
     
 	sleep ($mark_init::confg{BOOKMAN}->{sleepInterval});	
     
