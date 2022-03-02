@@ -12,6 +12,7 @@ $::attr = {
 		PrintError => 0,
 		RaiseError => 1,
         mysql_auto_reconnect => 1,
+        mysql_enable_utf8mb4 => 1,
 	}; 
 
 $::attr2 = { 
