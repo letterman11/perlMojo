@@ -45,7 +45,8 @@ my $defaultUserName = "boxersox";
 
 
 my $remoteHost =	$mark_init::confg{BOOKMAN}->{remoteHost};
-my $remotePort =	$mark_init::confg{BOOKMAN}->{remotePort};
+#my $remotePort =	$mark_init::confg{BOOKMAN}->{remotePort};
+my $remotePort =	$mark_init::confg{BOOKMAN}->{remotePortOther};
 my $timeOut =		$mark_init::confg{BOOKMAN}->{timeOut};
 my $flags =	    	$mark_init::confg{BOOKMAN}->{flags};
 my $bufferSize =	$mark_init::confg{BOOKMAN}->{bufferSize};
@@ -101,7 +102,8 @@ sub queryDB_bookmarks
 		$dbh->trace($trace);
 	}
                           # 0 link, 1 title, 2 date
-    my $sel_str = " select b.url, a.title, a.dateAdded, c.user_name from WM_BOOKMARK a, WM_PLACE b, WM_USER c where a.user_id = c.user_id and a.PLACE_ID = b.PLACE_ID";
+    my $sel_str = " select b.url, a.title, a.dateAdded, c.user_name from WM_BOOKMARK a,  \
+                WM_PLACE b, WM_USER c where a.user_id = c.user_id and a.PLACE_ID = b.PLACE_ID";
 
 	#load data (a.title, a.dataAdded, b.url) from join of WM_BOOKMARK and WM_PLACE tables
 
@@ -117,8 +119,8 @@ sub queryDB_bookmarks
 
 	foreach my $row (@$arrayrefs) 
 	{
-			my $url = $row->[$link];
-            my $user_id = $row->[$u_id];
+			my $url = $row->[$link];      # compound hash key
+            my $user_id = $row->[$u_id];  # url + user_id
 
             my $agg_key = $url ."_". $user_id;
 
@@ -154,7 +156,8 @@ sub populate_user_id($$)
     {
         $userTable{$userName} = $userID;
         return $userID;
-    } else
+    } 
+    else
     {
         return $defaultUserID;
     }
@@ -169,7 +172,9 @@ sub insertDB_bookmarks
 
 	my $dbFile = shift;
 	my ($link,$text,$date,$user_id) = (0,1,2,3);
+
 	my $dbg = DbGlob->new($dbConFile);
+
 	my $dbh = $dbg->connect() or die "Error $!\n";
 
 	if ($trace && $tracefile)
@@ -197,31 +202,24 @@ sub insertDB_bookmarks
 	
 	foreach my $net_urlKey (keys %net_webMarks)
 	{
-		#new feature to insert not null user_id
-       #	my $userName = $row->[$user_id];
 
 		if (exists $webMarks{$net_urlKey})  #  DOES HASH FUNCTION LOOKUP OF URL -- NO NEED TO LOOP
 		{
 				next;
 		}
-            #my $urlKey = $row->[$link];	
 
 		    LOG "-----------------INSERTDB CLient Match Routine Insert Statement Begin -----------------";
+
 			my $url = $net_webMarks{$net_urlKey}->{LINK};
 
 			my $title = $net_webMarks{$net_urlKey}->{TEXT};
 			my $dateAdded = $net_webMarks{$net_urlKey}->{DATE};
-
             my $userName = $net_webMarks{$net_urlKey}->{ID};
 	        
             my $userID = populate_user_id($userName, $dbh); 
-
-        #    if ($userID  eq $defaultUserID) 
-        #    {
-        #        $userID = populate_user_id($defaultUserName, $dbh);                
-        #    }
   
             LOG "----  returned USERID " . $userID . " ----------";
+
             #error checks later to be added
 			my ($tbl1MaxId) = $dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
 			my ($tbl2MaxId) = $dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
@@ -295,8 +293,8 @@ sub extract_data_from_buffer
 
                 my ($url,$user_id);
 
-                $url = $bmSegments[$link];
-                $user_id = $bmSegments[$id];
+                $url = $bmSegments[$link];     # compound hash key
+                $user_id = $bmSegments[$id];   # url + user_id
 
                 my $agg_key = $url ."_". $user_id;
 
@@ -353,7 +351,7 @@ while (1) {
 
     my $send_msg;
 
-	for my $bmKey (keys %webMarks) {
+    for my $bmKey (keys %webMarks) {
 	       $send_msg .= $webMarks{$bmKey}->{LINK} . "\t";
 	       $send_msg .= $webMarks{$bmKey}->{DATE} . "\t";
 	       $send_msg .= $webMarks{$bmKey}->{TEXT} . "\t";
