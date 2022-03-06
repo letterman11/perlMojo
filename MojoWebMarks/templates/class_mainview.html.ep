@@ -108,7 +108,7 @@
   <div class="delta_pass">
    <form name="deltaPass" id="delta_pass" method="POST" action="/mojoMarks/deltaPass">
     <ul>
-    <li onclick="logOut();"> LOGOUT <%= $user_name %> </li>
+    <li id="logout" onclick="logOut();"> <p> LOGOUT <%= $user_name %>  </p></li>
     <li> Change Pass Word ? </li>
     <li> Enter User Name </li>
     <li> <input name="user_name" type="text" size="25"> </li>
