@@ -208,59 +208,59 @@ sub insertDB_bookmarks
 				next;
 		}
 
-		    LOG "-----------------INSERTDB CLient Match Routine Insert Statement Begin -----------------";
+	    LOG "-----------------INSERTDB CLient Match Routine Insert Statement Begin -----------------";
 
-			my $url = $net_webMarks{$net_urlKey}->{LINK};
+		my $url = $net_webMarks{$net_urlKey}->{LINK};
 
-			my $title = $net_webMarks{$net_urlKey}->{TEXT};
-			my $dateAdded = $net_webMarks{$net_urlKey}->{DATE};
-            my $userName = $net_webMarks{$net_urlKey}->{ID};
+		my $title = $net_webMarks{$net_urlKey}->{TEXT};
+		my $dateAdded = $net_webMarks{$net_urlKey}->{DATE};
+        my $userName = $net_webMarks{$net_urlKey}->{ID};
 	        
-            my $userID = populate_user_id($userName, $dbh); 
+        my $userID = populate_user_id($userName, $dbh); 
   
-            LOG "----  returned USERID " . $userID . " ----------";
+        LOG "----  returned USERID " . $userID . " ----------";
 
-            if ($userID eq $defaultUserID) {
+        if ($userID eq $defaultUserID) {
 
-            LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
-            next; 
+           LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
+           next; 
 
-            }
+        }
 
 
-            #error checks later to be added
-			my ($tbl1MaxId) = $dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
-			my ($tbl2MaxId) = $dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
+        #error checks later to be added
+		my ($tbl1MaxId) = $dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
+		my ($tbl2MaxId) = $dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
 			
-			$tbl1MaxId++;
-			$tbl2MaxId++;
+		$tbl1MaxId++;
+		$tbl2MaxId++;
 
 			
-			#------- wm_bookmark------------------------
-			my $sql_insert_wm_book = "insert into WM_BOOKMARK (BOOKMARK_ID, PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?,?)";
+		#------- wm_bookmark------------------------
+		my $sql_insert_wm_book = "insert into WM_BOOKMARK (BOOKMARK_ID, PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?,?)";
 
-			my @bind_vals_bookmark = ($tbl1MaxId,
-							$tbl2MaxId,
-							$title,
-							$dateAdded,
-							$userID);
+		my @bind_vals_bookmark = ($tbl1MaxId,
+						$tbl2MaxId,
+						$title,
+						$dateAdded,
+						$userID);
 
-			my $rc = $dbh->do($sql_insert_wm_book, {}, @bind_vals_bookmark); 
+		my $rc = $dbh->do($sql_insert_wm_book, {}, @bind_vals_bookmark); 
 
-			#------- wm_bookmark------------------------
+		#------- wm_bookmark------------------------
 			
-			#------- wm_place------------------------
-			my $sql_insert_wm_place = "insert into WM_PLACE (PLACE_ID, URL, TITLE) values (?, ?, ?)";
+		#------- wm_place------------------------
+		my $sql_insert_wm_place = "insert into WM_PLACE (PLACE_ID, URL, TITLE) values (?, ?, ?)";
             
-			my @bind_vals_place = ($tbl2MaxId,
-									$url,
-									$title);
+		my @bind_vals_place = ($tbl2MaxId,
+								$url,
+								$title);
 
-			my $rc2 = $dbh->do($sql_insert_wm_place, {}, @bind_vals_place);
-			#------- wm_place------------------------
-			# error checks later to be put in place
-			#######################################
-			LOG "-----------------INSERTDB CLient Match Routine Insert Statement End -----------------";
+		my $rc2 = $dbh->do($sql_insert_wm_place, {}, @bind_vals_place);
+		#------- wm_place------------------------
+		# error checks later to be put in place
+		#######################################
+		LOG "-----------------INSERTDB CLient Match Routine Insert Statement End -----------------";
 
 
 	}
