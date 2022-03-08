@@ -39,8 +39,8 @@ my @opts = ("trace=s","tracefile=s");
 my %optctl = (trace =>\$trace, tracefile =>\$tracefile);
 my $run = 0;
 my $bmDB = "nothing";
-my $defaultUserID = "accto_TZ84Q"; 
-my $defaultUserName = "boxersox"; 
+my $defaultUserID = "XXXXX"; 
+my $defaultUserName = "XXXX"; 
 
 
 
@@ -220,6 +220,14 @@ sub insertDB_bookmarks
   
             LOG "----  returned USERID " . $userID . " ----------";
 
+            if ($userID eq $defaultUserID) {
+
+            LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
+            next; 
+
+            }
+
+
             #error checks later to be added
 			my ($tbl1MaxId) = $dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
 			my ($tbl2MaxId) = $dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
@@ -369,7 +377,7 @@ while (1) {
 
 
 	LOG "**** LOG OF SENT MESSAGE ****************************************************************************";
- 	LOG $send_msg;
+ 	#LOG $send_msg;
 	LOG "**** END LOG OF SENT MESSAGE ************************************************************************";
 	
 	#$socket->send($send_msg) or LOG  "Cannot send to server \n"  and 
@@ -408,7 +416,7 @@ while (1) {
 	LOG "just outside end loop from server";
 
 	LOG "**** LOG OF RECIEVED MESSAGE ****************************************************************************";
- 	LOG $bmBuffer;
+ 	#LOG $bmBuffer;
 	LOG "**** END LOG OF RECIEVED MESSAGE ************************************************************************";
 
 	extract_data_from_buffer($bmBuffer); 
