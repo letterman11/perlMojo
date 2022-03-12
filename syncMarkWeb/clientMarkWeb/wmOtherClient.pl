@@ -240,7 +240,7 @@ sub insertDB_bookmarks
 		my $sql_insert_wm_book = "insert into WM_BOOKMARK (BOOKMARK_ID, PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?,?)";
 
 		my @bind_vals_bookmark = ($tbl1MaxId,
-						$tbl1MaxId,
+						$tbl2MaxId,
 						$title,
 						$dateAdded,
 						$userID);
