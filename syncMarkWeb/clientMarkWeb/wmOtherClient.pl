@@ -218,11 +218,11 @@ sub insertDB_bookmarks
 	        
         my $userID = populate_user_id($userName, $dbh); 
   
-        LOG "----  returned USERID " . $userID . " ----------";
+        LOG "-----------------returned USERID " . $userID . " ----------";
 
         if ($userID eq $defaultUserID) {
 
-           LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
+           LOG "---------------SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
            next; 
 
         }
@@ -240,7 +240,7 @@ sub insertDB_bookmarks
 		my $sql_insert_wm_book = "insert into WM_BOOKMARK (BOOKMARK_ID, PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?,?)";
 
 		my @bind_vals_bookmark = ($tbl1MaxId,
-						$tbl2MaxId,
+						$tbl1MaxId,
 						$title,
 						$dateAdded,
 						$userID);
