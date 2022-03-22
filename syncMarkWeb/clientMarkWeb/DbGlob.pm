@@ -33,9 +33,11 @@ sub new
 
 	bless \%config, $class;
 
-	(\%config)->_initialize($_[0]);	
+    my $self = \%config;
+	$self->_initialize($_[0]);	
 
-	return \%config;
+	#return \%config;
+	return $self;
 }
 
 sub connect
