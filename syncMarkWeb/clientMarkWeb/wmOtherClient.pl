@@ -218,11 +218,11 @@ sub insertDB_bookmarks
 	        
         my $userID = populate_user_id($userName, $dbh); 
   
-        LOG "-----------------returned USERID " . $userID . " ----------";
+        LOG "----  returned USERID " . $userID . " ----------";
 
         if ($userID eq $defaultUserID) {
 
-           LOG "---------------SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
+           LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
            next; 
 
         }
@@ -433,8 +433,11 @@ while (1) {
 	
 	$socket->close();
 	LOG "=" x 120;
+	LOG "=" x 120;
+	LOG "=============================== RUN:  ".$run. " =========================================================";
 	LOG "=============================== Complete. ".  date_time(). " =========================================================";
 	LOG "=" x 120;
+
 
     if (++$run == $maxRuns) 
     {
