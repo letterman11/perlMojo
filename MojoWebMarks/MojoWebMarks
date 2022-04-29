@@ -372,7 +372,9 @@ sub authorize
 	$c->session->{Counter} = $init_count;
 	$c->session->{tab_state} = $init_tab_state;
 	$c->session->{dt_cnter} = $init_date_count;
-	$c->session(expires => undef);
+    my $expireFiveDays = 60 * 60 * 24 * 5;
+	$c->session(expiration => $expireFiveDays);
+#	$c->session(expires => undef);
 	$c->session(domain => undef);
 	my $sessionInstance = 'sess1';
 #	$c->render(template => "mainview", format => "html")
