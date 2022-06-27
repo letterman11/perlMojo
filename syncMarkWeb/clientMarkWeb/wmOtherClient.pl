@@ -284,6 +284,28 @@ sub build_data_from_buffer
 
 }
 
+sub build_data_from_buffer_two
+{
+        my $nwBuffer = shift;
+        my $bmBuffer = shift;
+
+		CORE::state $prevBuffer;
+		 
+        $$bmBuffer .= $nwBuffer;
+				 
+		################### check across complement buffers for end data token
+		my $currBuffer = $nwBuffer;
+		my $xCrossbmBuffer = $prevBuffer . $currBuffer;
+		####################################################
+		
+        #return $true if $nwBuffer =~ /$END_DATA/ || $xCrossbmBuffer =~ /$END_DATA/ms;
+		return $true if $xCrossbmBuffer =~ /$END_DATA/ms;
+		$prevBuffer = $currBuffer;
+        return $false;
+
+}
+
+
 sub extract_data_from_buffer
 {
 		my ($link,$date,$text,$id) = (0,1,2,3);
