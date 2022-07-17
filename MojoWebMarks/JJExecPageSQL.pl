@@ -9,6 +9,7 @@ sub exec_page
 	my $user_id = $c->session('wmUserID');
 	#my $user_id = shift;
 	my $user_name = $c->session('wmUserName');
+    my $sessionID = $c->session('wmSessionID');
 	my $errObj = shift;
 	my $tabtype = $c->param('tab') || $tabMap{tab_DATE};
 	my $searchboxTitle = $c->param('searchbox');
@@ -86,7 +87,8 @@ sub exec_page
 		} 
 		$exec_sql_str = $main_sql_str . $qstr  . " and b.url like '%$searchboxURL%' " . $ORDER_BY_DATE .  ' desc ' ;#$sort_ord;
         $storedSQLStr = $main_sql_str . $qstr ;
-		storeSQL($storedSQLStr);
+        
+		storeSQL($storedSQLStr,$sessionID);
 		$tabtype = $tabMap{tab_SRCH_TITLE};
 	}
 #=cut
@@ -118,7 +120,7 @@ sub exec_page
 		}
 
         $storedSQLStr = $main_sql_str . $qstr ;
-        storeSQL($storedSQLStr);
+        storeSQL($storedSQLStr,$sessionID);
         $tabtype = $tabMap{tab_SRCH_TITLE};
 
 	}
@@ -131,7 +133,7 @@ sub exec_page
 		$exec_sql_str = $main_sql_str . $qstr . $ORDER_BY_DATE  .' desc '  ;# $sort_ord;
 
         $storedSQLStr = $main_sql_str . $qstr ;
-        storeSQL($storedSQLStr);
+        storeSQL($storedSQLStr, $sessionID);
         $tabtype = $tabMap{tab_SRCH_TITLE};
 	}
 ##############################################################################################
@@ -169,7 +171,7 @@ sub exec_page
 	    }
 	    elsif($tabtype eq $tabMap{tab_SRCH_TITLE})
         {
-           $storedSQLStr = getStoredSQL();
+           $storedSQLStr = getStoredSQL($sessionID);
 	       $exec_sql_str = $storedSQLStr . $ORDER_BY_CRIT . $sort_ord;
         }
 ###################################

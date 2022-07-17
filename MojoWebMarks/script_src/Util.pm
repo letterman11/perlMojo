@@ -8,9 +8,20 @@ use CGI::Carp qw(fatalsToBrowser);
 use Storable;
 use Data::Dumper;
 use POSIX qw(strftime);
+use Cwd qw(cwd);
+use File::Spec;
+
+use Mojo::Log;
+our $moLog = Mojo::Log->new(path => '/home/angus/perlProjects/MojoWebMarks/log/production.log');
+
 
 #my $tmp_dir = "/services/webpages/d/c/dcoda.net/tmp";
-my $tmp_dir = "/tmp";
+#my $tmp_dir = "/tmp";
+
+my $tmp_dir = cwd;
+my $sep = File::Spec->catfile('', '');
+$tmp_dir .= $sep . "sessions";
+
 our $sessionDbConf = "/home/angus/dcoda_net/lib/sessionFile.dat"; 
 
 BEGIN
@@ -22,6 +33,8 @@ BEGIN
      @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL  &getStoredSQL &genSessionID &genID &isset);
 }
 
+########## Utility functions START ###############
+##################################################
 sub headerHttp
 {
 	return "Content-type:text/html\n\n";
@@ -43,7 +56,6 @@ sub headerHtml
 
 }
 
-
 sub footerHtml
 {
 	my $buffer_out;
@@ -51,7 +63,6 @@ sub footerHtml
 		. "</html>\n";
 	return $buffer_out;
 }
-
 
 sub dumpEnvHtml
 {
@@ -101,101 +112,24 @@ sub genSessionID
 
 sub genQueryID
 {
-        my @id_list = qw(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9);
-        my $id;
-        for(my $i = 0; $i < 5; $i++) {
-                 $id .= $id_list[int(rand 35)] ;
-        }
-        return $id;
+    my @id_list = qw(A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9);
+    my $id;
+    for(my $i = 0; $i < 5; $i++) {
+               $id .= $id_list[int(rand 35)] ;
+     }
+       return $id;
 }
 
-
-
-sub storeSession
+sub isset
 {
-	my $sessionInstance = shift;
-	my $sessionID = shift;
-	my $userID = shift;
-	my $userName = shift;
-	
-	#################################
-	return storeSessionDB($sessionInstance,$sessionID,$userID,$userName);
-        #################################
-
-	my $sessionObject = SessionObject->new($sessionInstance,
-                                         $sessionID,
-                                         $userID,
-                                         $userName);
-
-	#store $sessionObject, "/tmp/$sessionID" || die $!;
-	store $sessionObject, "$tmp_dir/$sessionID" || die $!;
-
+  return ((defined $_[0]) && ($_[0] !~ /^\s*$/));
 }
 
-sub getSessionInstance
-{
-	my $sInstancePre = 'ses';
-	my @numInstances = @{$::SESSION_CONFIG->{INSTANCES}};
-	return $sInstancePre . int(rand(scalar(@numInstances)));
+########## Utility functions END  ################
+##################################################
 
-}
-
-sub storeSessionObject
-{
-        my $sessionObject = shift;
-        my $sessionFile = $sessionObject->{wmSESSIONID};
-
-        ###################################################
-	return storeSessionObjectDB($sessionObject); 
-	###################################################
-
-	#store $sessionObject, "/tmp/$sessionFile" || die $!;
-	store $sessionObject, "$tmp_dir/$sessionFile" || die $!;
-
-}
-
-sub validateSession
-{
-        my ($sessionID,$userID)  = ();
-
-        my %cookies = fetch CGI::Cookie;
-        return Error->new(104) unless (defined $cookies{'wmSessionID'} && defined $cookies{'wmUserID'});
-
-        $sessionID = $cookies{'wmSessionID'}->value;
-        $userID = $cookies{'wmUserID'}->value;
-	############################
-	return validateSessionDB();
-	############################
-
-	#return Error->new(104) 	if not -e "/tmp/$sessionID";
-	return Error->new(104) 	if not -e "$tmp_dir/$sessionID";
-
-	#my $sessionObject = retrieve("/tmp/$sessionID") || return Error->new(103);
-	my $sessionObject = retrieve("$tmp_dir/$sessionID") || return Error->new(103);
-
-        return $sessionObject;
-
-}
-
-sub storeSQL
-{
-       my $storedSQL = shift;
-       #my $sessionObject = validateSession();
-       my $sessionObject = validateSessionDB();
-       $sessionObject->{'SESSIONDATA'} = $storedSQL;
-       #storeSessionObject($sessionObject); 
-       storeSessionObjectDB($sessionObject); 
-}
-
-sub getStoredSQL
-{
-       #my $sessionObject = validateSession();
-       my $sessionObject = validateSessionDB();
-       my $storedSQL = $sessionObject->{'SESSIONDATA'};
-       return $storedSQL;
-}
-
-
+########## Validation functions START ############
+##################################################
 sub formValidation
 {
 	my $query = shift;
@@ -223,8 +157,6 @@ sub formValidation
 	return Error->new(113) if($query->param('new_user_pass1') ne $query->param('new_user_pass2')); 
 
 	return Error->new(119) if($sqlInsert{email} !~ /\w+[\w.]+?\w+@\w+[\w.]+?\.\w+\s*$/);
-
-
 
 	return \%sqlInsert;
 }
@@ -283,24 +215,97 @@ sub slurp_file
 	return $out_page;
 }
 
-sub isset
+########## Validation function END ########################
+###########################################################
+
+
+sub storeSession
 {
-  return ((defined $_[0]) && ($_[0] !~ /^\s*$/));
+	my $sessionInstance = shift;
+	my $sessionID = shift;
+	my $userID = shift;
+	my $userName = shift;
+	
+	my $sessionObject = SessionObject->new($sessionInstance,
+                                         $sessionID,
+                                         $userID,
+                                         $userName);
+
+	store $sessionObject, "$tmp_dir/$sessionID" || die $!;
+
 }
+
+sub getSessionInstance
+{
+	my $sInstancePre = 'ses';
+	my @numInstances = @{$::SESSION_CONFIG->{INSTANCES}};
+	return $sInstancePre . int(rand(scalar(@numInstances)));
+
+}
+
+sub storeSessionObject
+{
+        my $sessionObject = shift;
+        my $sessionFile = $sessionObject->{wmSESSIONID};
+
+	store $sessionObject, "$tmp_dir/$sessionFile" || die $!;
+
+}
+
+sub validateSession
+{
+    my ($sessionID,$userID)  = ();
+
+    $sessionID = shift;    
+
+	my $sessionObject = retrieve("$tmp_dir/$sessionID") ||  return Error->new(103);
+
+   return $sessionObject;
+
+}
+
+sub storeSQL
+{
+    my $storedSQL = shift;
+    my $sessionID = shift;
+
+    my $sessObj = SessionObject->new();
+
+    $sessObj->{'SESSIONDATA'} =  $storedSQL;
+    $sessObj->{'wmSESSIONID'} = $sessionID;
+
+    storeSessionObject($sessObj); 
+    #storeSession($sessObj); 
+}
+
+sub getStoredSQL
+{
+    my $sessionID = shift;
+    my $userID = shift;
+
+    my $sessionObject = validateSession($sessionID);
+    #my $sessionObject = validateSessionDB($sessionID, $userID);
+    my $storedSQL = $sessionObject->{'SESSIONDATA'};
+
+    return $storedSQL;
+}
+
+
 
 sub storeSessionDB 
 {
-       my ($sessInst,$sessionID,$userID,$userName) = (@_);
-       my $now_str = localtime;
-       my $APPL = <DATA>;
+    my ($sessInst,$sessionID,$userID,$userName) = (@_);
+    my $now_str = localtime;
+    my $APPL = <DATA>;
 	my $dbconf = DbConfig->new($sessionDbConf);
-        my $path_to_file = $dbconf->dbName();
-	my $local_dbh = $dbconf->connect()
-                or die "Cannot Connect to Database $DBI::errstr\n";
+    my $path_to_file = $dbconf->dbName();
+    my $local_dbh = $dbconf->connect()
+        or die "Cannot Connect to Database $DBI::errstr\n";
  
-        print STDERR $sessionID, "\n";
+    print STDERR $sessionID, "\n";
+
 	my $now_str = strftime "%Y-%m-%d %H:%M:%S", localtime;
-	#my $rc2 = $local_dbh->do(" insert into session (APPL, SESSIONID, USERID, USERNAME, DATE_TS) values ('$APPL', '$sessionID', '$userID', '$userName', datetime('now')) " );
+
 	my $rc2 = $local_dbh->do(" insert into session (APPL, SESSIONID, USERID, USERNAME, DATE_TS) values ('$APPL', '$sessionID', '$userID', '$userName', '$now_str') " );
         die "Trace Error alpha1 " . $dbconf->dbName() ." $DBI::errstr\n" unless defined ($rc2);
 
@@ -316,24 +321,26 @@ sub storeSessionDB
 
 sub storeSessionObjectDB 
 {
-       my $sessionObject = shift;
-       my $storedSQL  = $sessionObject->{'SESSIONDATA'};
-       #print $storedSQL, "\n";
 
-       my $sessID  = $sessionObject->{wmSESSIONID};
+    my $sessionObject = shift;
+    my $storedSQL  = $sessionObject->{'SESSIONDATA'};
+
+    my $sessID  = $sessionObject->{wmSESSIONID};
+
 	my $dbconf = DbConfig->new($sessionDbConf);
+
 	my $local_dbh = $dbconf->connect()
                or die "Cannot Connect to Database $DBI::errstr\n";
-	        my $quoted_storedSQL =  $local_dbh->quote($storedSQL); 
+    my $quoted_storedSQL =  $local_dbh->quote($storedSQL); 
 
-	#my $rc2 = $local_dbh->do("update SESSION  set SESSIONDATA =  " . $local_dbh->quote($storedSQL) . " where SESSIONID = '$sessID' ");
 	my $rc2 = $local_dbh->do(qq{
 				update session  
 				set SESSIONDATA =  $quoted_storedSQL
 				 where SESSIONID = '$sessID' 
-				});
+				}) or die "NoOooooooooooooooooooooooooooooooooooooooooooooo";
 
-        die "Trace error  alpha2" . $dbconf->dbName() . " $DBI::errstr\n" unless defined ($rc2);
+
+    die "Trace error  alpha2" . $dbconf->dbName() . " $DBI::errstr\n" unless defined ($rc2);
 
 	print STDERR "RCODE2 => $rc2\n";
 
@@ -346,23 +353,23 @@ sub storeSessionObjectDB
 }
 
 sub validateSessionDB {
-        my ($sessInst,$sessionID,$userID,$storedSQL)  = ();
-        
-        my %cookies = fetch CGI::Cookie;
-        return Error->new(104) unless (defined $cookies{'wmSessionID'} && defined $cookies{'wmUserID'});
 
-        my $cookSessionID = $cookies{'wmSessionID'}->value;
-        my $cookUserID = $cookies{'wmUserID'}->value;
-	my $dbconf = DbConfig->new($sessionDbConf);
-	my $local_dbh = $dbconf->connect()
-                or die "Cannot Connect to Database $DBI::errstr\n";
+    my $storedSQL;
 
+    my $sessionID = shift;
 
-        ($sessionID,$storedSQL) = $local_dbh->selectrow_array("select SESSIONID, SESSIONDATA from session where SESSIONID = '$cookSessionID' and USERID = '$cookUserID'");
-        die "$DBI::errstr Error DB \n" unless defined ($sessionID);
-        return Error->new(2000) unless defined $sessionID;
+  	my $dbconf = DbConfig->new($sessionDbConf);
 
-        return SessionObject->new($sessInst,$sessionID,$cookUserID,$cookUserID,$storedSQL);
+    my $local_dbh = $dbconf->connect()
+       or die "Cannot Connect to Database $DBI::errstr\n";
+
+    ($sessionID,$storedSQL) = $local_dbh->selectrow_array("select SESSIONID, SESSIONDATA from session where SESSIONID = '$sessionID' ");
+
+    die "$DBI::errstr Error DB \n" unless defined ($sessionID);
+
+    return Error->new(2000) unless defined $sessionID;
+
+    return SessionObject->new("mojoMarks",$sessionID,undef,undef,$storedSQL);
         
 }
 
