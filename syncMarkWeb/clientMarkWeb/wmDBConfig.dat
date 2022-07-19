@@ -24,7 +24,8 @@
 #password=dococt99
 #database=DCODA_ACME_8key4nowmy173782
 
-hostname=localhost
+#hostname=localhost
+hostname=192.168.1.33
 user=dococt
 password=dococt
 database=dcoda_acme

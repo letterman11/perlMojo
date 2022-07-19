@@ -9,6 +9,7 @@ use lib '/home/angus/perlProjects/MojoWebMarks/script_src';
 use GenError;
 use GenMarksMojo;
 app->plugin('Config');
+app->log->level('info');
 
 
 #############################
@@ -49,8 +50,6 @@ package main
 }
 ##########################################################################################
 
-
-#################################################################3
 ############################################
 # AuthorizeCred was put before general *under* method to AVOID *under* call
 # post '/authorizeCred' => \&authorCredFunc;
@@ -246,53 +245,78 @@ sub insert_mark
 	my $local_dbh = $::dbh;
 
 
+    
+    ######################################################################################
+    # Use of autoincrement on cols BOOKMARK_ID and PLACE_ID would avoid the code below 
+    # for high transaction situation, but it would probably be better to collapse the 
+    # two tables  into one table to just increment one id
+    ######################################################################################
+
+
 	my ($tbl1MaxId) = $local_dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
 	my ($tbl2MaxId) = $local_dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
 
 	$tbl1MaxId++;
 	$tbl2MaxId++;
 
+    #######################################################################################
+    #######################################################################################    
+
 
 	#Duplicate URL check => if so fail out to index reporting URL already exists;
 	# If no duplicate go ahead and insert into database WM_PLACE
 	#############################################################################
 	my ($dup_wm_place_url) = $local_dbh->selectrow_array("select b.url from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID and a.USER_ID = '$user_id' and b.URL = " . $local_dbh->quote($url) );
+
 	if (defined($dup_wm_place_url)) {
 		$c->renderMainView(Error->new(150));
 		return 0;
 	}
 
+    ####################################################################
+    # Could use transactions here to fall back if last operation on 
+    # wm_bookmark fails to roll back previous inserts
+    ####################################################################
 
-	my $rc = $local_dbh->do("insert into WM_PLACE (PLACE_ID, URL, TITLE) values ($tbl2MaxId," . $local_dbh->quote($url) . ", " . $local_dbh->quote($title) . ")" );
-	print STDERR "RCODE1 => $rc\n" if($DEBUG);
+    eval {
+         $local_dbh->do("insert into WM_PLACE (PLACE_ID, URL, TITLE) values ($tbl2MaxId," . $local_dbh->quote($url) . ", " . $local_dbh->quote($title) . ")" );
+    };
 
-	if(not defined($rc)) {
+	if($@) {
+
 		print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
 
         # @@@@@@@@@ No disconnect
 		# $local_dbh->disconnect;
         # @@@@@@@@@
+
 		$c->renderMainView(Error->new(150)); 
 		return 0;
 	}
 	
 	#Insert into WM_BOOKMARK the same  URL for WM_PLACE
 	####################################################
-	my $rc2 = $local_dbh->do("insert into WM_BOOKMARK (BOOKMARK_ID, USER_ID, PLACE_ID, TITLE, DATEADDED) values ($tbl1MaxId, '$user_id', $tbl2MaxId," . $local_dbh->quote($title) . ", '$dateAdded' ) " );
+    eval {
+        $local_dbh->do("insert into WM_BOOKMARK (BOOKMARK_ID, USER_ID, PLACE_ID, TITLE, DATEADDED) values ($tbl1MaxId, '$user_id', $tbl2MaxId," . $local_dbh->quote($title) . ", '$dateAdded' ) " );
+    };
 
-	print STDERR "RCODE2 => $rc2\n" if($DEBUG);
+	if($@) {
 
-	if(not defined($rc2)) {
 		print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
-        
+
         # No disconnect
 		# $local_dbh->disconnect;
         # @@@@@@@@@@@@@@@@@
+
 		$c->renderMainView(Error->new(150)); 
 		return 0;
-	}
-	$c->renderMainView();
-	return 1;
+
+	} else {
+
+        $c->renderMainView();
+	    return 1;
+
+    }
 }
 
 sub deltaPass

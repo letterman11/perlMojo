@@ -9,7 +9,6 @@ use strict;
 #@ISA = qw('Mojolicious::Controller');
 #use Mojo::Base 'Mojolicious::Controller';
 
-use strict;
 use POSIX qw(strftime);
 use Error;
 
@@ -44,7 +43,6 @@ sub genPage
    my $tab = $class->{TAB};
 
    my $tabTable = $class->genTabTable($sort_crit);
-   #my $optionTops = $class->gen_optionListDiv($user_id); 
    my $optionTops = &main::gen_optionListDiv($user_id); 
 
 	#$c->stash(tabTable => $tabTable, sort_crit => $sort_crit, user_name => $user_id, tab => $tab, optionTops => $optionTops);

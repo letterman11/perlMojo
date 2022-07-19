@@ -7,6 +7,7 @@ sub exec_page
 {
 	my $c = shift;
 	my $user_id = $c->session('wmUserID');
+    my $userID = $user_id;
 	#my $user_id = shift;
 	my $user_name = $c->session('wmUserName');
     my $sessionID = $c->session('wmSessionID');
@@ -87,8 +88,11 @@ sub exec_page
 		} 
 		$exec_sql_str = $main_sql_str . $qstr  . " and b.url like '%$searchboxURL%' " . $ORDER_BY_DATE .  ' desc ' ;#$sort_ord;
         $storedSQLStr = $main_sql_str . $qstr ;
-        
-		storeSQL($storedSQLStr,$sessionID);
+
+# File based         
+#		storeSQL($storedSQLStr,$sessionID);
+#########
+		storeSQL2($storedSQLStr,$sessionID, $userID);
 		$tabtype = $tabMap{tab_SRCH_TITLE};
 	}
 #=cut
@@ -120,7 +124,8 @@ sub exec_page
 		}
 
         $storedSQLStr = $main_sql_str . $qstr ;
-        storeSQL($storedSQLStr,$sessionID);
+        #storeSQL($storedSQLStr,$sessionID);
+        storeSQL2($storedSQLStr,$sessionID, $userID);
         $tabtype = $tabMap{tab_SRCH_TITLE};
 
 	}
@@ -133,7 +138,9 @@ sub exec_page
 		$exec_sql_str = $main_sql_str . $qstr . $ORDER_BY_DATE  .' desc '  ;# $sort_ord;
 
         $storedSQLStr = $main_sql_str . $qstr ;
-        storeSQL($storedSQLStr, $sessionID);
+       #storeSQL($storedSQLStr, $sessionID);
+
+        storeSQL2($storedSQLStr, $sessionID, $userID);
         $tabtype = $tabMap{tab_SRCH_TITLE};
 	}
 ##############################################################################################
@@ -171,8 +178,17 @@ sub exec_page
 	    }
 	    elsif($tabtype eq $tabMap{tab_SRCH_TITLE})
         {
-           $storedSQLStr = getStoredSQL($sessionID);
-	       $exec_sql_str = $storedSQLStr . $ORDER_BY_CRIT . $sort_ord;
+           #$storedSQLStr = getStoredSQL($sessionID);
+           $storedSQLStr = getStoredSQL2($sessionID);
+        
+            if (not isset($storedSQLStr))
+            {
+               print;
+              #$moLog->error("NO Criteria set ");    
+            } else {
+
+	        $exec_sql_str = $storedSQLStr . $ORDER_BY_CRIT . $sort_ord;
+           }
         }
 ###################################
 ##################################

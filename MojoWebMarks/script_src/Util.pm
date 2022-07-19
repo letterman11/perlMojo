@@ -30,7 +30,8 @@ BEGIN
 
      use vars        qw(@ISA @EXPORT @EXPORT_OK);
      @ISA            = qw(Exporter);
-     @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL  &getStoredSQL &genSessionID &genID &isset);
+     #@EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL  &getStoredSQL &genSessionID &genID &isset);
+     @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL2  &getStoredSQL2 &genSessionID &genID &isset);
 }
 
 ########## Utility functions START ###############
@@ -215,7 +216,7 @@ sub slurp_file
 	return $out_page;
 }
 
-########## Validation function END ########################
+########## Validation functions END #######################
 ###########################################################
 
 
@@ -245,8 +246,8 @@ sub getSessionInstance
 
 sub storeSessionObject
 {
-        my $sessionObject = shift;
-        my $sessionFile = $sessionObject->{wmSESSIONID};
+    my $sessionObject = shift;
+    my $sessionFile = $sessionObject->{wmSESSIONID};
 
 	store $sessionObject, "$tmp_dir/$sessionFile" || die $!;
 
@@ -254,12 +255,18 @@ sub storeSessionObject
 
 sub validateSession
 {
-    my ($sessionID,$userID)  = ();
+    my $sessionID = shift;    
+    my ($sessionObject,$userID)  = ();
 
-    $sessionID = shift;    
+   #$sessionObject = retrieve("$tmp_dir/$sessionID") || return Error->new(103);
+    eval {
+     $sessionObject = retrieve("$tmp_dir/$sessionID"); 
+    };
 
-	my $sessionObject = retrieve("$tmp_dir/$sessionID") ||  return Error->new(103);
-
+    if ($@) 
+    {
+        return Error->new(103);
+    }
    return $sessionObject;
 
 }
@@ -270,26 +277,47 @@ sub storeSQL
     my $sessionID = shift;
 
     my $sessObj = SessionObject->new();
-
     $sessObj->{'SESSIONDATA'} =  $storedSQL;
     $sessObj->{'wmSESSIONID'} = $sessionID;
 
     storeSessionObject($sessObj); 
-    #storeSession($sessObj); 
+}
+
+sub storeSQL2
+{
+    my $storedSQL = shift;
+    my $sessionID = shift;
+    my $userID = shift;
+
+    my $sessObj = SessionObject->new();
+    $sessObj->{'SESSIONDATA'} =  $storedSQL;
+    $sessObj->{'wmSESSIONID'} = $sessionID;
+    $sessObj->{'wmUSERID'} = $userID;
+
+    storeSessionObjectDB($sessObj); 
+
 }
 
 sub getStoredSQL
 {
     my $sessionID = shift;
-    my $userID = shift;
-
     my $sessionObject = validateSession($sessionID);
-    #my $sessionObject = validateSessionDB($sessionID, $userID);
     my $storedSQL = $sessionObject->{'SESSIONDATA'};
+
+    $moLog->error("#################SSQL " . $storedSQL);
 
     return $storedSQL;
 }
 
+sub getStoredSQL2 
+{
+    my $sessionID = shift;
+    my $sessionObject = validateSessionDB($sessionID);
+    my $storedSQL = $sessionObject->{'SESSIONDATA'};
+
+    return $storedSQL;
+
+}
 
 
 sub storeSessionDB 
@@ -321,59 +349,91 @@ sub storeSessionDB
 
 sub storeSessionObjectDB 
 {
-
+    my $APPL;
+    $APPL = <DATA>;
+    close DATA;
+    
     my $sessionObject = shift;
-    my $storedSQL  = $sessionObject->{'SESSIONDATA'};
 
-    my $sessID  = $sessionObject->{wmSESSIONID};
+    my $storedSQL  = $sessionObject->{'SESSIONDATA'};
+    my $sessionID  = $sessionObject->{wmSESSIONID};
+    my $userID  = $sessionObject->{wmUSERID};
+
+	my $now_str = strftime "%Y-%m-%d %H:%M:%S", localtime;
 
 	my $dbconf = DbConfig->new($sessionDbConf);
 
 	my $local_dbh = $dbconf->connect()
                or die "Cannot Connect to Database $DBI::errstr\n";
+
     my $quoted_storedSQL =  $local_dbh->quote($storedSQL); 
 
-	my $rc2 = $local_dbh->do(qq{
+    eval {
+
+	    $local_dbh->do(qq{
+				insert into session (APPL, SESSIONID, USERID, USERNAME, DATE_TS, SESSIONDATA) values 
+                ('$APPL', '$sessionID', '$userID', '$userID', '$now_str', $quoted_storedSQL)
+				});
+
+    };
+
+    if ($@) 
+    {
+
+        $moLog->error("Failed insert for session table ?? " . $DBI::errstr);
+
+        eval {
+
+	     $local_dbh->do(qq{
 				update session  
-				set SESSIONDATA =  $quoted_storedSQL
-				 where SESSIONID = '$sessID' 
-				}) or die "NoOooooooooooooooooooooooooooooooooooooooooooooo";
+				set SESSIONDATA =  $quoted_storedSQL,
+                    UPDATE_TS = '$now_str'
+				 where SESSIONID = '$sessionID' 
+				});
 
+        };
 
-    die "Trace error  alpha2" . $dbconf->dbName() . " $DBI::errstr\n" unless defined ($rc2);
+    	if($@) {
+            $moLog->error("Failed update for session table  ?? " . $DBI::errstr);
 
-	print STDERR "RCODE2 => $rc2\n";
+    		print STDERR "Failed DB Operation: $DBI::errstr\n";
+    		$local_dbh->disconnect;
+    		return Error->new(150);
+    	}
 
-	if(not defined($rc2)) {
-		print STDERR "Failed DB Operation: $DBI::errstr\n";
-		$local_dbh->disconnect;
-		return Error->new(150);
-	}
+    } else {
+
+        return $sessionObject;        
+    }
 
 }
 
-sub validateSessionDB {
+sub validateSessionDB 
+{
 
     my $storedSQL;
-
     my $sessionID = shift;
-
   	my $dbconf = DbConfig->new($sessionDbConf);
 
     my $local_dbh = $dbconf->connect()
        or die "Cannot Connect to Database $DBI::errstr\n";
+    
+    $moLog->error("SessionID " . $sessionID);
 
     ($sessionID,$storedSQL) = $local_dbh->selectrow_array("select SESSIONID, SESSIONDATA from session where SESSIONID = '$sessionID' ");
 
-    die "$DBI::errstr Error DB \n" unless defined ($sessionID);
+    $moLog->error( " validate SSQL " . $storedSQL);
+    $moLog->error( "SessionID AFTER " . $sessionID);
+
+    #die "$DBI::errstr Error DB \n" unless defined ($sessionID);
 
     return Error->new(2000) unless defined $sessionID;
-
     return SessionObject->new("mojoMarks",$sessionID,undef,undef,$storedSQL);
         
 }
 
-1;
 
 __DATA__
 WEBMARKS
+
+1;
