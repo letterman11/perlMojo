@@ -171,7 +171,8 @@ function cgi_out(tab_parm)
 
 function setSearchTerms()
 {      
-       var searchTerms = parent.top.document.getElementById('searchBxTitle');
+       //var searchTerms = parent.top.document.getElementById('searchBxTitle');
+       var searchTerms = parent.top.document.getElementById('searchBx');
        //parent.top.document.getElementById('searchTerms').innerHTML = searchTerms.value;
        setCookie('searchTerms', searchTerms.value);
        setCookie('search_submission', search_submission);
@@ -194,7 +195,8 @@ function getSearchTerms()
 
 function topOpToSearch(topOp)
 {      
-   var searchBox = parent.top.document.getElementById('searchBxTitle');
+   //var searchBox = parent.top.document.getElementById('searchBxTitle');
+   var searchBox = parent.top.document.getElementById('searchBx');
    searchBox.value = topOp; 
 }
 
