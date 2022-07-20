@@ -96,7 +96,7 @@ sub genTabTable
        $sort_sp_dt = " ";
    }
 
-   $tbl = qq# <table class="tab_table">\n
+   $tbl = qq# <table id="tab_table" class="tab_table">\n
      <col width="50%">\n
      <col width="35%">\n
      <col width="auto">\n
