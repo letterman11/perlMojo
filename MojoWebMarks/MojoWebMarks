@@ -11,6 +11,10 @@ use GenMarksMojo;
 app->plugin('Config');
 app->log->level('info');
 
+use Mojo::Log;
+our $moLog = Mojo::Log->new(path => '/home/angus/perlProjects/MojoWebMarks/log/production.log');
+
+
 
 #############################
 #external dependencies below 
@@ -102,6 +106,8 @@ get '/tabView' =>  \&index;
 post '/searchWB' => \&indexSearch;
 post '/registrationAuth' => \&regAuth;
 post '/insertMark' => \&insert_mark;
+post '/updateMark' => \&update_mark;
+post '/deleteMark' => \&delete_mark;
 post '/deltaPass' => \&deltaPass;
 ##############################################################
 
@@ -318,6 +324,87 @@ sub insert_mark
 
     }
 }
+
+sub update_mark
+{
+	my $c = shift;
+
+	my $user_id = $c->session('wmUserID');
+	my $title = $c->param('title_update');
+	my $url = $c->param('url_update');
+	my $bookmark_id = $c->param('bk_id');
+
+    my $local_dbh = $::dbh;
+    my $place_id;
+
+    eval {
+
+        ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+    };
+
+    if ($@) 
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+		$c->renderMainView(Error->new(102)); 
+    }
+
+    eval {
+
+         $local_dbh->do(" update WM_BOOKMARK set TITLE = ? where BOOKMARK_ID = ? ", {}, $title, $bookmark_id);
+         $local_dbh->do(" update WM_PLACE set URL = ? where PLACE_ID = ? ", {}, $url, $place_id);
+    };
+
+    if ($@)
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+		$c->renderMainView(Error->new(102)); 
+        return 0; 
+    }
+   
+    $c->renderMainView();
+    return 1;
+
+}
+
+
+sub delete_mark
+{
+	my $c = shift;
+	my $user_id = $c->session('wmUserID');
+	my $bookmark_id = $c->param('bk_id');
+
+
+    my $local_dbh = $::dbh;
+    my $place_id;
+
+    eval {
+
+        ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+    }; 
+
+    if ($@) 
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+		$c->renderMainView(Error->new(102)); 
+    }
+
+    eval {
+
+         $local_dbh->do(" delete from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+         $local_dbh->do(" delete from WM_PLACE where PLACE_ID = ? ", {}, $place_id);
+    };
+
+    if ($@)
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+		$c->renderMainView(Error->new(102)); 
+        return 0; 
+    }
+   
+    $c->renderMainView();
+    return 1;
+}
+
 
 sub deltaPass
 {

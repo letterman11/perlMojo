@@ -323,7 +323,6 @@ sub getStoredSQL2
 sub storeSessionDB 
 {
     my ($sessInst,$sessionID,$userID,$userName) = (@_);
-    my $now_str = localtime;
     my $APPL = <DATA>;
 	my $dbconf = DbConfig->new($sessionDbConf);
     my $path_to_file = $dbconf->dbName();
