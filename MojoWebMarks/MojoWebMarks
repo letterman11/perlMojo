@@ -1,5 +1,7 @@
 #!/usr/bin/env perl -wT
 
+package mojoMarks;
+
 use Mojolicious::Lite;
 require "/home/angus/perlProjects/MojoWebMarks/JJExecPageSQL.pl";
 require "/home/angus/perlProjects/MojoWebMarks/SQLStrings.pl";

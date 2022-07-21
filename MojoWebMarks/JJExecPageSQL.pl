@@ -183,8 +183,7 @@ sub exec_page
         
             if (not isset($storedSQLStr))
             {
-               print;
-              #$moLog->error("NO Criteria set ");    
+              $mojoMarks::moLog->error("NO Criteria set ");    
             } else {
 
 	        $exec_sql_str = $storedSQLStr . $ORDER_BY_CRIT . $sort_ord;
@@ -204,7 +203,7 @@ sub exec_page
 # Start of Execution of SQL
 #########
 
-    print STDERR "Exec webMark SQL " . $executed_sql_str, "\n";
+    $mojoMarks::moLog->error("Start Exec of SQL @" . __PACKAGE__ . "@  " . __LINE__ . " " .  $executed_sql_str , "\n");
 
     eval {
     	$sth = $::dbh->prepare($executed_sql_str);
@@ -216,6 +215,7 @@ sub exec_page
 
     if ($@) 
     {
+        $mojoMarks::moLog->error("FAILED  Exec of SQL tabtype @" . tabtype . "@  " . __LINE__ . " " .  $executed_sql_str , "\n");
 		#constructor args ->	#1,controller; #2,tabMap; #3,dataRows; #4,rowCount, #5,ErrObject
 	   $genMarksMojo = GenMarksMojo->new($c,$tabMap{tabtype},undef,undef,Error->new(2000));	
 	   #$genMarksMojo->genPage($user_name,$sort_crit,\%tabMap);
