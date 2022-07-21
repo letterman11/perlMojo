@@ -108,15 +108,17 @@
      <form  name="search_form" class="search_form" method="POST" action="/mojoMarks/searchWB">
        <ul>
         <li> Enter Search Term(s)  </li>
- 	    <li style="padding-left:3px;">  
-        OR <input name="searchtype" type="radio"  value="OR"> 
-        AND <input name="searchtype" checked="true" type="radio"  value="AND"> 
-        COMBO <input name="searchtype" type="radio" value="COMBO"> 
+ 	    <li style="display:inline;padding-left:3px;">  
+            OR <input name="searchtype" type="radio"  value="OR"> 
+            AND <input name="searchtype" checked="true" type="radio"  value="AND"> 
+            COMBO <input name="searchtype" type="radio" value="COMBO"> 
         </li>
+
        <li id="selDates" style="display:inline">
          <input name="searchDateStart" type="text" size=10 id="searchDateStart" value="Ex: 1-1-2021" onFocus="blurDates();">
          <input name="searchDateEnd" type="text" size=10 id="searchDateEnd" value="Ex: 1-10-2021"  onFocus="blurDates();">
        </li>
+
         <li style="position:absolute; top:20px; right:5px;">
               <input onclick="setSearchTerms();" name="submit" type="submit" value="Search">
         </li>
