@@ -215,7 +215,7 @@ sub exec_page
 
     if ($@) 
     {
-        $mojoMarks::moLog->error("FAILED  Exec of SQL tabtype @" . tabtype . "@  " . __LINE__ . " " .  $executed_sql_str , "\n");
+        $mojoMarks::moLog->error("FAILED  Exec of SQL tabtype @" . $tabtype . "@  " . __LINE__ . " " .  $executed_sql_str , "\n");
 		#constructor args ->	#1,controller; #2,tabMap; #3,dataRows; #4,rowCount, #5,ErrObject
 	   $genMarksMojo = GenMarksMojo->new($c,$tabMap{tabtype},undef,undef,Error->new(2000));	
 	   #$genMarksMojo->genPage($user_name,$sort_crit,\%tabMap);
