@@ -110,6 +110,8 @@ post '/insertMark' => \&insert_mark;
 post '/updateMark' => \&update_mark;
 post '/deleteMark' => \&delete_mark;
 post '/deltaPass' => \&deltaPass;
+
+any '*' => \&not_found;
 ##############################################################
 
 ### Helper Methods for routes ###############################
@@ -127,6 +129,13 @@ helper exec_page => \&exec_page;
 #############################################################
 # Mojo Routing methods
 #############################################################
+sub not_found {
+	my $c = shift;
+
+	$c->render(template=> 'class_not_found', format => 'html');
+
+}
+
 sub index {
 	my $c = shift;	# the mojolicious controller object
 					# first arg to routing methods
@@ -148,7 +157,7 @@ sub logout {
 	$c->stash( colorStyle=>"red", displayText=>"", errText => "");
 	$c->render(template=> 'class_defaultpage', format => 'html');
 	#$c->renderDefaultView();	
-	return 1;
+	#return 1;
 }
 
 sub registration
