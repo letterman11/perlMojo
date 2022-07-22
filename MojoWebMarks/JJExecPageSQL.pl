@@ -184,6 +184,7 @@ sub exec_page
             if (not isset($storedSQLStr))
             {
               $mojoMarks::moLog->error("NO Criteria set ");    
+	        $exec_sql_str = $date_sql_str . $sort_ord . "limit 200 ";
             } else {
 
 	        $exec_sql_str = $storedSQLStr . $ORDER_BY_CRIT . $sort_ord;
