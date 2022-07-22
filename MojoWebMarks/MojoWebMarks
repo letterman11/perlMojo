@@ -81,7 +81,7 @@ under '/' =>  sub {
 		if ($c->match->endpoint->name =~ /registration/) 
 		{ 	
 			$c->render(template=> 'class_registration', format => 'html'); 
-			return 1;
+#			return 1;
 		} 
 		else
         {
