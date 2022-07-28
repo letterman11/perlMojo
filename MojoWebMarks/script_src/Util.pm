@@ -10,6 +10,8 @@ use Data::Dumper;
 use POSIX qw(strftime);
 use Cwd qw(cwd);
 use File::Spec;
+use DateTime;
+
 
 use Mojo::Log;
 our $moLog = Mojo::Log->new(path => '/home/angus/perlProjects/MojoWebMarks/log/production.log');
@@ -31,7 +33,9 @@ BEGIN
      use vars        qw(@ISA @EXPORT @EXPORT_OK);
      @ISA            = qw(Exporter);
      #@EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL  &getStoredSQL &genSessionID &genID &isset);
-     @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL2  &getStoredSQL2 &genSessionID &genID &isset);
+     @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession 
+                                                &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL2  
+                                                        &getStoredSQL2 &genSessionID &genID &isset &converDateEpoch);
 }
 
 ########## Utility functions START ###############
@@ -126,6 +130,38 @@ sub isset
   return ((defined $_[0]) && ($_[0] !~ /^\s*$/));
 }
 
+
+sub  convertDateEpoch
+{
+    my $humanDate = shift;
+    my ($year,$month,$day);
+
+    my @res1 = $humanDate =~ /([0-9]{1,2})[\-\/]([0-9]{1,2})[\-\/]([0-9]{4})/;
+    my @res = $humanDate =~ /([0-9]{4})[\-\/]([0-9]{1,2})[\-\/]([0-9]{1,2})/;
+
+
+    if (@res1)
+    {
+        print(@res1);
+        $month = $res1[0];
+        $day = $res1[1];
+        $year = $res1[2];
+    }
+    elsif (@res)
+    {
+        print(@res);
+        $year = $res[0];
+        $month = $res[1];
+        $day = $res[2];
+    }
+
+    my $dateAdded = DateTime->new(year=>$year, month=>$month, day=>$day)->epoch;
+
+    $dateAdded = int($dateAdded) * (1000 * 1000);
+
+    return $dateAdded
+
+}
 ########## Utility functions END  ################
 ##################################################
 
