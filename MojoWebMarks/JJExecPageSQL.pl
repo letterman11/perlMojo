@@ -13,8 +13,13 @@ sub exec_page
     my $sessionID = $c->session('wmSessionID');
 	my $errObj = shift;
 	my $tabtype = $c->param('tab') || $tabMap{tab_DATE};
+
 	my $searchboxTitle = $c->param('searchbox');
 	my $searchTypeBool = $c->param('searchtype');
+
+	my $searchDateStart = $c->param('searchDateStart');
+	my $searchDateEnd = $c->param('searchDateEnd');
+
 	my $sort_crit = isset($c->param('sortCrit')) ? $c->param('sortCrit') : 1 ;
 	my $searchboxURL = $c->param('searchbox2');
 	my $ORDER_BY_CRIT;	
@@ -25,6 +30,51 @@ sub exec_page
 	my $storedSQLStr;
 	my $sort_ord;	
 	my $exec_sql_str;
+
+    my $multiDate = '(([0-9]{1,2})[\-\/]([0-9]{1,2})[\-\/]([0-9]{4}))|(([0-9]{4})[\-\/]([0-9]{1,2})[\-\/]([0-9]{1,2}))|(\b([0-9]{1,2})[\-\/]([0-9]{1,2})[\-\/]([0-9]{2})\b)';
+    my $shortDate = '\b([0-9]{1,2})[\-\/]([0-9]{1,2})[\-\/]([0-9]{2})\b';
+
+    my ($res_start_1,$res_sub_1, $res_end_1);
+
+    #temporary code
+    if (isset($searchDateStart))
+    {
+        #$res_start_1 = re.match(regMultiDate,searchDateStart)
+        $res_start_1 = $searchDateStart =~ /$multiDate/;
+
+        if (!$res_start_1)
+        {
+            $genMarksMojo = GenMarksMojo->new($c,$tabMap{tabtype},undef,undef,Error->new(151));	
+            $genMarksMojo->genPage($user_id,$sort_crit,\%tabMap);
+
+        }
+
+        @res_sub_1 = $searchDateStart =~ /$shortDate/;
+
+        if (@res_sub_1)
+        {
+           $searchDateStart = $res_sub_1[0] . "-" . $res_sub_1[1] . "-" . "20" . $res_sub_1[2];
+        }
+    }
+
+    if (isset($searchDateEnd))
+    {
+        $res_end_1 = $searchDateEnd =~ /$multiDate/;
+
+        if (! $res_end_1)
+        {
+            $genMarksMojo = GenMarksMojo->new($c,$tabMap{tabtype},undef,undef,Error->new(151));	
+            $genMarksMojo->genPage($user_id,$sort_crit,\%tabMap);
+
+        }
+
+        @res_sub_1 = $searchDateEnd =~ /$shortDate/;
+        if (@res_sub_1)
+        {
+            $searchDateEnd = $res_sub_1[0] . "-" . $res_sub_1[1] . "-" . "20" . $res_sub_1[2];
+        }
+    }
+     $mojoMarks::moLog->info(" After Date Code @" . $searchDateStart . "@  " . __LINE__ . " "  , "\n");
 	
 	## Correct later
 	if(ref $errObj ne 'Error') 
@@ -143,6 +193,36 @@ sub exec_page
         storeSQL2($storedSQLStr, $sessionID, $userID);
         $tabtype = $tabMap{tab_SRCH_TITLE};
 	}
+
+    elsif (isset($searchDateStart) && isset($searchDateEnd))
+    {
+        my $qstr =  " dateAdded between " . convertDateEpoch($searchDateStart) . " and " . convertDateEpoch($searchDateEnd);
+
+        $exec_sql_str = $main_sql_str . $qstr . " ) ";
+        $storedSQLStr = $main_sql_str . $qstr;
+
+       $mojoMarks::moLog->info("SearchDateStart and  searchDateEnd SQL @" . __PACKAGE__ . "@  " . __LINE__ . " " .  $exec_sql_str , "\n");
+
+       #storeSQL($storedSQLStr, $sessionID);
+        storeSQL2($storedSQLStr, $sessionID, $userID);
+        $tabtype = $tabMap['tab_SRCH_DATE'];
+    }
+    elsif (isset($searchDateStart))
+    {
+        $mojoMarks::moLog->info("SearchDateStart only SQL @" . __PACKAGE__ . "@  " . __LINE__ . " "  , "\n");
+        my $dateAddedEnd =  int(((convertDateEpoch($searchDateStart) / (1000 * 1000)) + (60 * 60 * 24)) * (1000 * 1000)) ;
+        my $qstr =  " dateAdded between " . convertDateEpoch($searchDateStart) . " and " . $dateAddedEnd;
+
+        $exec_sql_str = $main_sql_str . $qstr . " ) ";
+        $storedSQLStr = $main_sql_str . $qstr;
+
+        $mojoMarks::moLog->info("SearchDateStart only SQL @" . __PACKAGE__ . "@  " . __LINE__ . " " .  $exec_sql_str , "\n");
+
+       #storeSQL($storedSQLStr, $sessionID);
+        storeSQL2($storedSQLStr, $sessionID, $userID);
+        $tabtype = $tabMap['tab_SRCH_DATE'];
+    }
+
 ##############################################################################################
 # End of logic branches for SrcBoxTitle + SrchBoxURL + Radio Button
 ##############################################################################################
@@ -183,7 +263,7 @@ sub exec_page
         
             if (not isset($storedSQLStr))
             {
-              $mojoMarks::moLog->error("NO Criteria set ");    
+              $mojoMarks::moLog->info("NO Criteria set ");    
 	        $exec_sql_str = $date_sql_str . $sort_ord . "limit 200 ";
             } else {
 
@@ -204,7 +284,7 @@ sub exec_page
 # Start of Execution of SQL
 #########
 
-    $mojoMarks::moLog->error("Start Exec of SQL @" . __PACKAGE__ . "@  " . __LINE__ . " " .  $executed_sql_str , "\n");
+    $mojoMarks::moLog->info("Start Exec of SQL @" . __PACKAGE__ . "@  " . __LINE__ . " " .  $executed_sql_str , "\n");
 
     eval {
     	$sth = $::dbh->prepare($executed_sql_str);
@@ -224,7 +304,7 @@ sub exec_page
     }
 	else
 	{
-      print STDERR "SUCCESS webMark SQL " . $executed_sql_str, "\n";
+       $mojoMarks::moLog->error("SUCCESS  Exec of SQL tabtype @" . $tabtype . "@  " . __LINE__ . " " .  $executed_sql_str , "\n");
 	   $data_refs = $sth->fetchall_arrayref;
 	   $row_count = $sth->rows;
 		print STDERR $row_count, " DB rowcount\n";

@@ -11,7 +11,7 @@ use POSIX qw(strftime);
 use Cwd qw(cwd);
 use File::Spec;
 use DateTime;
-
+my $local_time_zone_nys = "America/New_York"; #for DateTime module does not do right if time zone is left off
 
 use Mojo::Log;
 our $moLog = Mojo::Log->new(path => '/home/angus/perlProjects/MojoWebMarks/log/production.log');
@@ -35,7 +35,7 @@ BEGIN
      #@EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL  &getStoredSQL &genSessionID &genID &isset);
      @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession 
                                                 &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL2  
-                                                        &getStoredSQL2 &genSessionID &genID &isset &converDateEpoch);
+                                                        &getStoredSQL2 &genSessionID &genID &isset &convertDateEpoch);
 }
 
 ########## Utility functions START ###############
@@ -136,6 +136,8 @@ sub  convertDateEpoch
     my $humanDate = shift;
     my ($year,$month,$day);
 
+    $moLog->info("Start of Epoc func " . $humanDate);
+
     my @res1 = $humanDate =~ /([0-9]{1,2})[\-\/]([0-9]{1,2})[\-\/]([0-9]{4})/;
     my @res = $humanDate =~ /([0-9]{4})[\-\/]([0-9]{1,2})[\-\/]([0-9]{1,2})/;
 
@@ -155,11 +157,12 @@ sub  convertDateEpoch
         $day = $res[2];
     }
 
-    my $dateAdded = DateTime->new(year=>$year, month=>$month, day=>$day)->epoch;
+    $moLog->info(" 2/3 thru   Epoc func " . $humanDate);
+    my $dateAdded = DateTime->new(year=>$year, month=>$month, day=>$day, time_zone=> $local_time_zone_nys)->epoch;
 
-    $dateAdded = int($dateAdded) * (1000 * 1000);
+    $dateAdded = $dateAdded * (1000 * 1000);
 
-    return $dateAdded
+    return $dateAdded;
 
 }
 ########## Utility functions END  ################
