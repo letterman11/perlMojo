@@ -91,7 +91,7 @@ under '/' =>  sub {
         }
         elsif($c->match->endpoint->name =~ /^registrationAuth$/) 
         {
-           #no-op continue to below routes
+           #pass thru condition for above branch continue to val func
             return 1; 
 		} 
 		else
@@ -124,6 +124,7 @@ any '*' => \&not_found;
 # mojo methods used in conjunction with routing methods; must 
 # be "helper"ed to use # within mojolicious routes/controller;
 helper pre_auth => \&pre_auth;
+helper pre_auth2 => \&pre_auth2;
 helper authorize => \&authorize;
 helper mod_passwd => \&mod_passwd;
 helper sessionReady => \&sessReady;
@@ -169,7 +170,6 @@ sub logout {
 sub registration
 {
 	my $c = shift;
-    $moLog->info(" HERE ");
 	$c->render(template => 'class_registration', format => 'html');
 }
 
@@ -185,7 +185,6 @@ sub regAuth
 	{
 		$c->stash( colorStyle => "red", errText =>  $callObj->errText );
 		$c->render(template => 'class_registration', format => 'html') 
-		#GenMarks->new()->genRegistration($callObj);
 	}
 	else
 	{
@@ -195,8 +194,11 @@ sub regAuth
 		my $partID = substr(genSessionID(),0,5);
 		my $userID = $partUserName."_".$partID;
 
+        my $hash_pass = Util::digest_pass($sqlHash->{password});
+
 		my $insert_sql_str = "INSERT INTO WM_USER (USER_ID,USER_NAME,USER_PASSWD,EMAIL_ADDRESS) VALUES (" . 
-			"'$userID','$sqlHash->{userName}','$sqlHash->{password}','$sqlHash->{email}')";
+			#"'$userID','$sqlHash->{userName}','$sqlHash->{password}','$sqlHash->{email}')";
+			"'$userID','$sqlHash->{userName}','$hash_pass','$sqlHash->{email}')";
         my $sth;
 
 		eval {
@@ -225,7 +227,8 @@ sub authorCredFunc
 {
 	my $c = shift;
 
-	my ($user_id,$user_name) = $c->pre_auth();
+	#my ($user_id,$user_name) = $c->pre_auth();
+	my ($user_id,$user_name) = $c->pre_auth2();
 
 	print STDERR $user_id , " User ID " . @{[caller(2)]}[3] . " \n";
 	#!!!additional logic for already present session needed
@@ -427,7 +430,8 @@ sub delete_mark
 sub deltaPass
 {
 	my $c = shift;
-    my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth();
+    #my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth();
+    my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth2();
 
     if(not defined($usr_name))
     {
@@ -493,8 +497,8 @@ sub pre_auth2
 
     my $local_dbh = $::dbh;
 
-    my $password_digest = digest_pass($usr_pass);
-    my $password_old_digest = digest_pass($old_usr_pass);
+    my $password_digest = Util::digest_pass($usr_pass);
+    my $password_old_digest = Util::digest_pass($old_usr_pass);
 
     ##################################
     #password digest function to add##
@@ -502,14 +506,15 @@ sub pre_auth2
     ##################################
 
 	
-    my ($db_usr_id, $db_usr_name, $db_usr_pass)  = $local_dbh->do("select user_id, user_name, user_passwd from WM_USER where user_name = ? ", {}, $usr_name);
+    my ($db_usr_id, $db_usr_name, $db_usr_pass)  = $local_dbh->selectrow_array("select user_id, user_name, user_passwd from WM_USER where user_name = ? ", {}, $usr_name);
+    $moLog->info(" data base  pre_auth2 " . " " . $db_usr_id  . " " . $db_usr_name . " " . $db_usr_pass);
 
 
-    if(defined($old_usr_pass) && ($db_usr_pass eq $old_usr_pass) || $db_usr_pass eq $password_old_digest) 
+    if(isset($old_usr_pass) && ($db_usr_pass eq $old_usr_pass) || $db_usr_pass eq $password_old_digest) 
     {     
-        return ($db_usr_id, $db_usr_name,$db_usr_pass); 
+        return ($db_usr_id, $db_usr_name, $usr_pass); 
     }
-    elsif ($db_usr_pass eq $usr_pass || $db_usr_pass eq $password_digest)
+    elsif (($db_usr_pass eq $usr_pass) || ($db_usr_pass eq $password_digest))
     {
         return ($db_usr_id, $db_usr_name,$db_usr_pass); 
     }
