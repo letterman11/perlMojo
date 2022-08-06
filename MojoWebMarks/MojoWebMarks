@@ -66,7 +66,6 @@ post '/authorizeCred' => \&authorCredFunc;
 ## must come before other routing methods to be effective
 ########
 under '/' =>  sub {
-    $moLog->info(" UNDER *************************HERE ");
 ########
 ########
 ######## perl $_[0] arg var contains the Mojo controller
@@ -83,13 +82,17 @@ under '/' =>  sub {
 	} 
 	else 
 	{
-        $moLog->info(" UNDER READY  *************************HERE ");
 		my $c = shift;
 		$c->stash( colorStyle=>"red", displayText=>"", errText => "");
+
 		if ($c->match->endpoint->name =~ /^registration$/) 
 		{ 	
-            $moLog->info(" UNDER REGISTRATION  *************************HERE ");
 			$c->render(template=> 'class_registration', format => 'html'); 
+        }
+        elsif($c->match->endpoint->name =~ /^registrationAuth$/) 
+        {
+           #no-op continue to below routes
+            return 1; 
 		} 
 		else
         {
@@ -114,7 +117,7 @@ post '/updateMark' => \&update_mark;
 post '/deleteMark' => \&delete_mark;
 post '/deltaPass' => \&deltaPass;
 
-#any '*' => \&not_found;
+any '*' => \&not_found;
 ##############################################################
 
 ### Helper Methods for routes ###############################
@@ -167,7 +170,7 @@ sub registration
 {
 	my $c = shift;
     $moLog->info(" HERE ");
-	#$c->render(template => 'no_class_registration', format => 'html');
+	$c->render(template => 'class_registration', format => 'html');
 }
 
 sub regAuth
@@ -180,8 +183,7 @@ sub regAuth
 		
 	if(ref $callObj eq 'Error')
 	{
-		$c->stash( colorStyle => "red", errText =>  "Boo" );
-		#$c->stash( colorStyle => "red", errText => "Boo");
+		$c->stash( colorStyle => "red", errText =>  $callObj->errText );
 		$c->render(template => 'class_registration', format => 'html') 
 		#GenMarks->new()->genRegistration($callObj);
 	}
@@ -206,7 +208,7 @@ sub regAuth
 
 		if ($@) 
 		{
-			$c->stash( colorStyle => "red", errText => $DbGlob::errstr . " Fail ");
+			$c->stash( colorStyle => "red", errText => $DbGlob::errstr );
 			$c->render(template => 'class_registration', format => 'html'); 
 		}
 		else
