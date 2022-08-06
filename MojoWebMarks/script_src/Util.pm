@@ -11,6 +11,7 @@ use POSIX qw(strftime);
 use Cwd qw(cwd);
 use File::Spec;
 use DateTime;
+use Digest;
 my $local_time_zone_nys = "America/New_York"; #for DateTime module does not do right if time zone is left off
 
 use Mojo::Log;
@@ -165,6 +166,17 @@ sub  convertDateEpoch
     return $dateAdded;
 
 }
+
+sub digest_pass
+{
+    my $passwd = shift;
+    my $sha512 = Digest->new("SHA-512"); 
+    
+    $sha512->add($passwd);
+    return $sha512->hexdigest;
+
+}
+
 ########## Utility functions END  ################
 ##################################################
 

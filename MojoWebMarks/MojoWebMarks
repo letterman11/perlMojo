@@ -66,6 +66,7 @@ post '/authorizeCred' => \&authorCredFunc;
 ## must come before other routing methods to be effective
 ########
 under '/' =>  sub {
+    $moLog->info(" UNDER *************************HERE ");
 ########
 ########
 ######## perl $_[0] arg var contains the Mojo controller
@@ -82,10 +83,12 @@ under '/' =>  sub {
 	} 
 	else 
 	{
+        $moLog->info(" UNDER READY  *************************HERE ");
 		my $c = shift;
 		$c->stash( colorStyle=>"red", displayText=>"", errText => "");
-		if ($c->match->endpoint->name =~ /registration/) 
+		if ($c->match->endpoint->name =~ /^registration$/) 
 		{ 	
+            $moLog->info(" UNDER REGISTRATION  *************************HERE ");
 			$c->render(template=> 'class_registration', format => 'html'); 
 		} 
 		else
@@ -111,7 +114,7 @@ post '/updateMark' => \&update_mark;
 post '/deleteMark' => \&delete_mark;
 post '/deltaPass' => \&deltaPass;
 
-any '*' => \&not_found;
+#any '*' => \&not_found;
 ##############################################################
 
 ### Helper Methods for routes ###############################
@@ -163,19 +166,22 @@ sub logout {
 sub registration
 {
 	my $c = shift;
-	$c->render(template => 'class_registration', format => 'html');
+    $moLog->info(" HERE ");
+	#$c->render(template => 'no_class_registration', format => 'html');
 }
 
 sub regAuth
 {
 	my $c = shift;
 
+    $moLog->info(" ******* REGAUTH  HERE ");
+
 	my $callObj = Util::formValidation($c);	
 		
 	if(ref $callObj eq 'Error')
 	{
-		$c->stash( errText => $callObj->errText);
-		#$c->stash( errText => "Failed Validation");
+		$c->stash( colorStyle => "red", errText =>  "Boo" );
+		#$c->stash( colorStyle => "red", errText => "Boo");
 		$c->render(template => 'class_registration', format => 'html') 
 		#GenMarks->new()->genRegistration($callObj);
 	}
@@ -200,7 +206,7 @@ sub regAuth
 
 		if ($@) 
 		{
-			$c->stash( colorStyle => "red", errText => $DbGlob::errstr);
+			$c->stash( colorStyle => "red", errText => $DbGlob::errstr . " Fail ");
 			$c->render(template => 'class_registration', format => 'html'); 
 		}
 		else
@@ -457,7 +463,8 @@ sub pre_auth
 	my $usr_pass = $c->param('user_pass'); 
 	my $old_usr_pass = $c->param('old_pass'); #only for update
 	my $exec_sql_str;
-	
+
+
 	if(defined($old_usr_pass)) {
 		$exec_sql_str = "select user_id, user_name from WM_USER where user_passwd = '" . $old_usr_pass . "' and user_name ='" . $usr_name . "' ";
 	} else {
@@ -474,6 +481,42 @@ sub pre_auth
 	return ($user_row[0],$user_row[1],$usr_pass);
 }
 
+sub pre_auth2
+{
+    my $c = shift;
+	my $usr_name = $c->param('user_name');
+	my $usr_pass = $c->param('user_pass'); 
+	my $old_usr_pass = $c->param('old_pass'); #only for update
+	my $exec_sql_str;
+
+    my $local_dbh = $::dbh;
+
+    my $password_digest = digest_pass($usr_pass);
+    my $password_old_digest = digest_pass($old_usr_pass);
+
+    ##################################
+    #password digest function to add##
+    # do not want to touch db  #######
+    ##################################
+
+	
+    my ($db_usr_id, $db_usr_name, $db_usr_pass)  = $local_dbh->do("select user_id, user_name, user_passwd from WM_USER where user_name = ? ", {}, $usr_name);
+
+
+    if(defined($old_usr_pass) && ($db_usr_pass eq $old_usr_pass) || $db_usr_pass eq $password_old_digest) 
+    {     
+        return ($db_usr_id, $db_usr_name,$db_usr_pass); 
+    }
+    elsif ($db_usr_pass eq $usr_pass || $db_usr_pass eq $password_digest)
+    {
+        return ($db_usr_id, $db_usr_name,$db_usr_pass); 
+    }
+    else
+    {
+        return (); 
+    }
+
+}
 
 #helper method
 sub authorize

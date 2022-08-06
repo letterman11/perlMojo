@@ -194,7 +194,7 @@ sub exec_page
         $tabtype = $tabMap{tab_SRCH_TITLE};
 	}
 
-    elsif (isset($searchDateStart) && isset($searchDateEnd))
+    elsif (isset($searchDateStart) && isset($searchDateEnd) && ($searchDateStart != $searchDateEnd)) 
     {
         my $qstr =  " dateAdded between " . convertDateEpoch($searchDateStart) . " and " . convertDateEpoch($searchDateEnd);
 
