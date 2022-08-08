@@ -73,11 +73,13 @@ sub genTabTable
    my $self = shift;
    my $sort_crit = shift;
    my ($url,$title,$added) = (0,1,2);
+   my $bk_id = 3;
    my $tbl;
    my $tbl_row;
    my $row_color;
    my $i;
    my $alt;
+   my $tbl_row_header; 
    my $sort_sp_dt;
 
    my $sort_span_html_asc = "<span id=\"sort_span_date\">  &uarr; </span>";
@@ -96,7 +98,7 @@ sub genTabTable
        $sort_sp_dt = " ";
    }
 
-   $tbl = qq# <table class="tab_table">\n
+   $tbl = qq# <table id="tab_table" class="tab_table">\n
      <col width="50%">\n
      <col width="35%">\n
      <col width="auto">\n
@@ -112,14 +114,17 @@ sub genTabTable
   ## POTENTIAL ERROR SECTION ##
    for my $row (@{$self->{DATAREFS}}) 
    {
-       ($url,$title,$added) = @$row;
+       ($url,$title,$added,$bk_id) = @$row;
 
        $added = convertTime($added);
 
        $alt =  (++$i % 2 ? 1 : 2);   
        $row_color = "row_color" . $alt;
 
+       $tbl_row_header = " <th hidden>  $bk_id   </th> "; 
+
        $tbl_row .= qq# <tr class="$row_color"> 
+                  $tbl_row_header 
 		     	 <td class="title_cell"> <a href="$url" target="_blank">  $title </a> </td>
 		     	 <td class="url_cell">  $url </td>
 		     	 <td class="date_cell">  $added </td>

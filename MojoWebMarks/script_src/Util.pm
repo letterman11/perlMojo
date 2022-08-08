@@ -10,6 +10,9 @@ use Data::Dumper;
 use POSIX qw(strftime);
 use Cwd qw(cwd);
 use File::Spec;
+use DateTime;
+use Digest;
+my $local_time_zone_nys = "America/New_York"; #for DateTime module does not do right if time zone is left off
 
 use Mojo::Log;
 our $moLog = Mojo::Log->new(path => '/home/angus/perlProjects/MojoWebMarks/log/production.log');
@@ -31,7 +34,9 @@ BEGIN
      use vars        qw(@ISA @EXPORT @EXPORT_OK);
      @ISA            = qw(Exporter);
      #@EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL  &getStoredSQL &genSessionID &genID &isset);
-     @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL2  &getStoredSQL2 &genSessionID &genID &isset);
+     @EXPORT         = qw(&headerHttp &headerHtml &footerHtml &validateSession 
+                                                &validateSessionDB &formValidation &storeSession &storeSessionDB &storeSQL2  
+                                                        &getStoredSQL2 &genSessionID &genID &isset &convertDateEpoch);
 }
 
 ########## Utility functions START ###############
@@ -124,6 +129,52 @@ sub genQueryID
 sub isset
 {
   return ((defined $_[0]) && ($_[0] !~ /^\s*$/));
+}
+
+
+sub  convertDateEpoch
+{
+    my $humanDate = shift;
+    my ($year,$month,$day);
+
+    $moLog->info("Start of Epoc func " . $humanDate);
+
+    my @res1 = $humanDate =~ /([0-9]{1,2})[\-\/]([0-9]{1,2})[\-\/]([0-9]{4})/;
+    my @res = $humanDate =~ /([0-9]{4})[\-\/]([0-9]{1,2})[\-\/]([0-9]{1,2})/;
+
+
+    if (@res1)
+    {
+        print(@res1);
+        $month = $res1[0];
+        $day = $res1[1];
+        $year = $res1[2];
+    }
+    elsif (@res)
+    {
+        print(@res);
+        $year = $res[0];
+        $month = $res[1];
+        $day = $res[2];
+    }
+
+    $moLog->info(" 2/3 thru   Epoc func " . $humanDate);
+    my $dateAdded = DateTime->new(year=>$year, month=>$month, day=>$day, time_zone=> $local_time_zone_nys)->epoch;
+
+    $dateAdded = $dateAdded * (1000 * 1000);
+
+    return $dateAdded;
+
+}
+
+sub digest_pass
+{
+    my $passwd = shift;
+    my $sha512 = Digest->new("SHA-512"); 
+    
+    $sha512->add($passwd);
+    return $sha512->hexdigest;
+
 }
 
 ########## Utility functions END  ################
@@ -323,7 +374,6 @@ sub getStoredSQL2
 sub storeSessionDB 
 {
     my ($sessInst,$sessionID,$userID,$userName) = (@_);
-    my $now_str = localtime;
     my $APPL = <DATA>;
 	my $dbconf = DbConfig->new($sessionDbConf);
     my $path_to_file = $dbconf->dbName();

@@ -1,5 +1,7 @@
 #!/usr/bin/env perl -wT
 
+package mojoMarks;
+
 use Mojolicious::Lite;
 require "/home/angus/perlProjects/MojoWebMarks/JJExecPageSQL.pl";
 require "/home/angus/perlProjects/MojoWebMarks/SQLStrings.pl";
@@ -10,6 +12,10 @@ use GenError;
 use GenMarksMojo;
 app->plugin('Config');
 app->log->level('info');
+
+use Mojo::Log;
+our $moLog = Mojo::Log->new(path => '/home/angus/perlProjects/MojoWebMarks/log/production.log');
+
 
 
 #############################
@@ -24,9 +30,9 @@ use DbGlob;
 
 ###################
 # templates#####
-# t-> mainview  => called now by class methods		|	
-# t-> defaultpage  => called now by class methods 	| of GenMarksMojo class 
-# t-> registration  => called now by class methods	|
+# t-> mainview  => called now by class methods        |    
+# t-> defaultpage  => called now by class methods     | of GenMarksMojo class 
+# t-> registration  => called now by class methods    |
 ###################
 
 
@@ -42,11 +48,11 @@ our $dbConf = "/home/angus/perlProjects/MojoWebMarks/stockDbConfig.dat"; #@@
 # switching to main package which is available interpreter wide ####
 package main 
 {
-	our $dbg = DbGlob->new($dbConf);
-	our $dbh = $dbg->connect()
-		or GenError->new(Error->new(102))->display() and 
-				die "Cannot Connect to Database $DbGlob::errstr\n";
-	require '/home/angus/perlProjects/MojoWebMarks/gen_histo_gram_multi.pl';
+    our $dbg = DbGlob->new($dbConf);
+    our $dbh = $dbg->connect()
+        or GenError->new(Error->new(102))->display() and 
+                die "Cannot Connect to Database $DbGlob::errstr\n";
+    require '/home/angus/perlProjects/MojoWebMarks/gen_histo_gram_multi.pl';
 }
 ##########################################################################################
 
@@ -63,32 +69,37 @@ under '/' =>  sub {
 ########
 ########
 ######## perl $_[0] arg var contains the Mojo controller
-	$_[0]->stash(userName =>"", errText => "", displayText => "");
-	###################
-	#validate session
-	#################
-	if (sessionReady($_[0])) 
-	{
-		#Session exists proceed to other routes
-		#######################################
-		print STDERR $_[0]->session->{wmUserID} , "User ID \n ";
-    	return 1;
-	} 
-	else 
-	{
-		my $c = shift;
-		$c->stash( colorStyle=>"red", displayText=>"", errText => "");
-		if ($c->match->endpoint->name =~ /registration/) 
-		{ 	
-			$c->render(template=> 'class_registration', format => 'html'); 
-#			return 1;
-		} 
-		else
+    $_[0]->stash(userName =>"", errText => "", displayText => "");
+    ###################
+    #validate session
+    #################
+    if (sessionReady($_[0])) 
+    {
+        #Session exists proceed to other routes
+        #######################################
+        print STDERR $_[0]->session->{wmUserID} , "User ID \n ";
+        return 1;
+    } 
+    else 
+    {
+        my $c = shift;
+        $c->stash( colorStyle=>"red", displayText=>"", errText => "");
+
+        if ($c->match->endpoint->name =~ /^registration$/) 
+        {     
+            $c->render(template=> 'class_registration', format => 'html'); 
+        }
+        elsif($c->match->endpoint->name =~ /^registrationAuth$/) 
         {
-			$c->render(template=> 'class_defaultpage', format => 'html');
-		}  
-	return undef;
-	}
+           #pass thru condition for above branch continue to val func
+            return 1; 
+        } 
+        else
+        {
+            $c->render(template=> 'class_defaultpage', format => 'html');
+        }  
+    return undef;
+    }
 };
 
 ###############################################################
@@ -102,6 +113,8 @@ get '/tabView' =>  \&index;
 post '/searchWB' => \&indexSearch;
 post '/registrationAuth' => \&regAuth;
 post '/insertMark' => \&insert_mark;
+post '/updateMark' => \&update_mark;
+post '/deleteMark' => \&delete_mark;
 post '/deltaPass' => \&deltaPass;
 
 any '*' => \&not_found;
@@ -111,6 +124,7 @@ any '*' => \&not_found;
 # mojo methods used in conjunction with routing methods; must 
 # be "helper"ed to use # within mojolicious routes/controller;
 helper pre_auth => \&pre_auth;
+helper pre_auth2 => \&pre_auth2;
 helper authorize => \&authorize;
 helper mod_passwd => \&mod_passwd;
 helper sessionReady => \&sessReady;
@@ -125,134 +139,137 @@ helper exec_page => \&exec_page;
 sub not_found {
     my $c = shift;
 
-	$c->render(template => 'class_not_found', format => 'html') 
+    $c->render(template=> 'class_not_found', format => 'html');
 
 }
 
-
 sub index {
-	my $c = shift;	# the mojolicious controller object
-					# first arg to routing methods
-	$c->renderMainView();
+    my $c = shift;    # the mojolicious controller object
+                    # first arg to routing methods
+    $c->renderMainView();
 }
 
 sub indexSearch {
-	my $c = shift;
-	$c->renderMainView();
+    my $c = shift;
+    $c->renderMainView();
 }
 
 sub logout {
-	my $c = shift;
-	###########################
-	#delete/expire  mojo session/cookies
-	$c->session(expires => 1);
-	###########################
+    my $c = shift;
+    ###########################
+    #delete/expire  mojo session/cookies
+    $c->session(expires => 1);
+    ###########################
 
-	$c->stash( colorStyle=>"red", displayText=>"", errText => "");
-	$c->render(template=> 'class_defaultpage', format => 'html');
-	#$c->renderDefaultView();	
-	return 1;
+    $c->stash( colorStyle=>"red", displayText=>"", errText => "");
+    $c->render(template=> 'class_defaultpage', format => 'html');
+    #$c->renderDefaultView();    
+    #return 1;
 }
 
 sub registration
 {
-	my $c = shift;
-	$c->render(template => 'class_registration', format => 'html');
+    my $c = shift;
+    $c->render(template => 'class_registration', format => 'html');
 }
 
 sub regAuth
 {
-	my $c = shift;
+    my $c = shift;
 
-	my $callObj = Util::formValidation($c);	
-		
-	if(ref $callObj eq 'Error')
-	{
-		$c->stash( errText => $callObj->errText);
-		#$c->stash( errText => "Failed Validation");
-		$c->render(template => 'class_registration', format => 'html') 
-		#GenMarks->new()->genRegistration($callObj);
-	}
-	else
-	{
-		my $sqlHash = $callObj;
-		my $local_user_name = $sqlHash->{userName}; 
-		my $partUserName = substr($sqlHash->{userName},0,5); 
-		my $partID = substr(genSessionID(),0,5);
-		my $userID = $partUserName."_".$partID;
+    $moLog->info(" ******* REGAUTH  HERE ");
 
-		my $insert_sql_str = "INSERT INTO WM_USER (USER_ID,USER_NAME,USER_PASSWD,EMAIL_ADDRESS) VALUES (" . 
-			"'$userID','$sqlHash->{userName}','$sqlHash->{password}','$sqlHash->{email}')";
+    my $callObj = Util::formValidation($c);    
+        
+    if(ref $callObj eq 'Error')
+    {
+        $c->stash( colorStyle => "red", errText =>  $callObj->errText );
+        $c->render(template => 'class_registration', format => 'html') 
+    }
+    else
+    {
+        my $sqlHash = $callObj;
+        my $local_user_name = $sqlHash->{userName}; 
+        my $partUserName = substr($sqlHash->{userName},0,5); 
+        my $partID = substr(genSessionID(),0,5);
+        my $userID = $partUserName."_".$partID;
+
+        my $hash_pass = Util::digest_pass($sqlHash->{password});
+
+        my $insert_sql_str = "INSERT INTO WM_USER (USER_ID,USER_NAME,USER_PASSWD,EMAIL_ADDRESS) VALUES (" . 
+            #"'$userID','$sqlHash->{userName}','$sqlHash->{password}','$sqlHash->{email}')";
+            "'$userID','$sqlHash->{userName}','$hash_pass','$sqlHash->{email}')";
         my $sth;
 
-		eval {
-	
-			$sth = $::dbh->prepare($insert_sql_str);
-			$sth->execute();
+        eval {
+    
+            $sth = $::dbh->prepare($insert_sql_str);
+            $sth->execute();
 
-		};
+        };
 
-		if ($@) 
-		{
-			$c->stash( colorStyle => "red", errText => $DbGlob::errstr);
-			$c->render(template => 'class_registration', format => 'html'); 
-		}
-		else
-		{
-			#authorize()
-			$c->stash( colorStyle => "black", userName => $local_user_name, displayText => "Registration Successful");
-			$c->render(template => 'class_defaultpage', format => 'html') 
-				
-		}
-	}
+        if ($@) 
+        {
+            $c->stash( colorStyle => "red", errText => $DbGlob::errstr );
+            $c->render(template => 'class_registration', format => 'html'); 
+        }
+        else
+        {
+            #authorize()
+            $c->stash( colorStyle => "black", userName => $local_user_name, displayText => "Registration Successful");
+            $c->render(template => 'class_defaultpage', format => 'html') 
+                
+        }
+    }
 }
 
 sub authorCredFunc
 {
-	my $c = shift;
+    my $c = shift;
 
-	my ($user_id,$user_name) = $c->pre_auth();
+    #my ($user_id,$user_name) = $c->pre_auth();
+    my ($user_id,$user_name) = $c->pre_auth2();
 
-	print STDERR $user_id , " User ID " . @{[caller(2)]}[3] . " \n";
-	#!!!additional logic for already present session needed
-	######################################################
- 	if(defined($user_id))
-	{   
- 		$c->authorize($user_id,$user_name);
-	}
-	else
-	{   
-		$c->stash(colorStyle => "red", userName => "", displayText => "Failed Login"); 
-		$c->render(template => 'class_defaultpage', format => 'html');
-		return 0;
-	}
-	print STDERR $user_id , " MainView\n";
-		$c->renderMainView();
-		#$c->stash(tabMap => \%tabMap);
-		#$c->render(template => 'mainview', format => 'html');
-		return 1;
+    print STDERR $user_id , " User ID " . @{[caller(2)]}[3] . " \n";
+    #!!!additional logic for already present session needed
+    ######################################################
+     if(defined($user_id))
+    {   
+         $c->authorize($user_id,$user_name);
+    }
+    else
+    {   
+        $c->stash(colorStyle => "red", userName => "", displayText => "Failed Login"); 
+        $c->render(template => 'class_defaultpage', format => 'html');
+        return 0;
+    }
+    print STDERR $user_id , " MainView\n";
+        $c->renderMainView();
+        #$c->stash(tabMap => \%tabMap);
+        #$c->render(template => 'mainview', format => 'html');
+        return 1;
 }
 
 # Mojo Code of insert_mark is different than CGI code version
 ##############################################
 sub insert_mark
 {
-	my $c = shift;
-	my $user_id = $c->session('wmUserID');
-	my $title = $c->param('mark_title');
-	my $url = $c->param('mark_url');
+    my $c = shift;
+    my $user_id = $c->session('wmUserID');
+    my $title = $c->param('mark_title');
+    my $url = $c->param('mark_url');
 
-	if ((not isset($title)) || (not isset($url))) 
-	{
-		 $c->renderMainView(Error->new(151));
-	     return 0;
-	}
+    if ((not isset($title)) || (not isset($url))) 
+    {
+         $c->renderMainView(Error->new(151));
+         return 0;
+    }
 
-	my $unix_epochs = time;	
-	#use antique mozilla time format (1000 * 1000) unix epoch seconds => microseconds 
-	my $dateAdded = $unix_epochs * (1000 * 1000);
+    my $unix_epochs = time;    
+    #use antique mozilla time format (1000 * 1000) unix epoch seconds => microseconds 
+    my $dateAdded = $unix_epochs * (1000 * 1000);
 
-	my $local_dbh = $::dbh;
+    my $local_dbh = $::dbh;
 
 
     
@@ -263,25 +280,25 @@ sub insert_mark
     ######################################################################################
 
 
-	my ($tbl1MaxId) = $local_dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
-	my ($tbl2MaxId) = $local_dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
+    my ($tbl1MaxId) = $local_dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
+    my ($tbl2MaxId) = $local_dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
 
-	$tbl1MaxId++;
-	$tbl2MaxId++;
+    $tbl1MaxId++;
+    $tbl2MaxId++;
 
     #######################################################################################
     #######################################################################################    
 
 
-	#Duplicate URL check => if so fail out to index reporting URL already exists;
-	# If no duplicate go ahead and insert into database WM_PLACE
-	#############################################################################
-	my ($dup_wm_place_url) = $local_dbh->selectrow_array("select b.url from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID and a.USER_ID = '$user_id' and b.URL = " . $local_dbh->quote($url) );
+    #Duplicate URL check => if so fail out to index reporting URL already exists;
+    # If no duplicate go ahead and insert into database WM_PLACE
+    #############################################################################
+    my ($dup_wm_place_url) = $local_dbh->selectrow_array("select b.url from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID and a.USER_ID = '$user_id' and b.URL = " . $local_dbh->quote($url) );
 
-	if (defined($dup_wm_place_url)) {
-		$c->renderMainView(Error->new(150));
-		return 0;
-	}
+    if (defined($dup_wm_place_url)) {
+        $c->renderMainView(Error->new(150));
+        return 0;
+    }
 
     ####################################################################
     # Could use transactions here to fall back if last operation on 
@@ -292,47 +309,129 @@ sub insert_mark
          $local_dbh->do("insert into WM_PLACE (PLACE_ID, URL, TITLE) values ($tbl2MaxId," . $local_dbh->quote($url) . ", " . $local_dbh->quote($title) . ")" );
     };
 
-	if($@) {
+    if($@) {
 
-		print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
+        print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
 
         # @@@@@@@@@ No disconnect
-		# $local_dbh->disconnect;
+        # $local_dbh->disconnect;
         # @@@@@@@@@
 
-		$c->renderMainView(Error->new(150)); 
-		return 0;
-	}
-	
-	#Insert into WM_BOOKMARK the same  URL for WM_PLACE
-	####################################################
+        $c->renderMainView(Error->new(150)); 
+        return 0;
+    }
+    
+    #Insert into WM_BOOKMARK the same  URL for WM_PLACE
+    ####################################################
     eval {
         $local_dbh->do("insert into WM_BOOKMARK (BOOKMARK_ID, USER_ID, PLACE_ID, TITLE, DATEADDED) values ($tbl1MaxId, '$user_id', $tbl2MaxId," . $local_dbh->quote($title) . ", '$dateAdded' ) " );
     };
 
-	if($@) {
+    if($@) {
 
-		print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
+        print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
 
         # No disconnect
-		# $local_dbh->disconnect;
+        # $local_dbh->disconnect;
         # @@@@@@@@@@@@@@@@@
 
-		$c->renderMainView(Error->new(150)); 
-		return 0;
+        $c->renderMainView(Error->new(150)); 
+        return 0;
 
-	} else {
+    } else {
 
         $c->renderMainView();
-	    return 1;
+        return 1;
 
     }
 }
 
+sub update_mark
+{
+    my $c = shift;
+
+    my $user_id = $c->session('wmUserID');
+    my $title = $c->param('title_update');
+    my $url = $c->param('url_update');
+    my $bookmark_id = $c->param('bk_id');
+
+    my $local_dbh = $::dbh;
+    my $place_id;
+
+    eval {
+
+        ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+    };
+
+    if ($@) 
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+        $c->renderMainView(Error->new(102)); 
+    }
+
+    eval {
+
+         $local_dbh->do(" update WM_BOOKMARK set TITLE = ? where BOOKMARK_ID = ? ", {}, $title, $bookmark_id);
+         $local_dbh->do(" update WM_PLACE set URL = ? where PLACE_ID = ? ", {}, $url, $place_id);
+    };
+
+    if ($@)
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+        $c->renderMainView(Error->new(102)); 
+        return 0; 
+    }
+   
+    $c->renderMainView();
+    return 1;
+
+}
+
+
+sub delete_mark
+{
+    my $c = shift;
+    my $user_id = $c->session('wmUserID');
+    my $bookmark_id = $c->param('bk_id');
+
+
+    my $local_dbh = $::dbh;
+    my $place_id;
+
+    eval {
+
+        ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+    }; 
+
+    if ($@) 
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+        $c->renderMainView(Error->new(102)); 
+    }
+
+    eval {
+
+         $local_dbh->do(" delete from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+         $local_dbh->do(" delete from WM_PLACE where PLACE_ID = ? ", {}, $place_id);
+    };
+
+    if ($@)
+    {
+        $moLog->error("Db Error " . $DBI::errstr);
+        $c->renderMainView(Error->new(102)); 
+        return 0; 
+    }
+   
+    $c->renderMainView();
+    return 1;
+}
+
+
 sub deltaPass
 {
-	my $c = shift;
-    my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth();
+    my $c = shift;
+    #my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth();
+    my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth2();
 
     if(not defined($usr_name))
     {
@@ -340,7 +439,7 @@ sub deltaPass
     }
     else
     {
-		my $dbh = $::dbh;
+        my $dbh = $::dbh;
 
         my $rc = $dbh->do("update WM_USER set user_passwd='" . $usr_pass . "'  where user_name='" . $usr_name . "' ");
 
@@ -353,7 +452,7 @@ sub deltaPass
             $c->renderMainView();   
        }
     # No disconnect
-	# $dbh->disconnect();
+    # $dbh->disconnect();
     # @@@@@@@@@@@@@@@@@@
     }
 
@@ -366,78 +465,116 @@ sub deltaPass
 sub pre_auth
 {
     my $c = shift;
-	my $usr_name = $c->param('user_name');
-	my $usr_pass = $c->param('user_pass'); 
-	my $old_usr_pass = $c->param('old_pass'); #only for update
-	my $exec_sql_str;
-	
-	if(defined($old_usr_pass)) {
-		$exec_sql_str = "select user_id, user_name from WM_USER where user_passwd = '" . $old_usr_pass . "' and user_name ='" . $usr_name . "' ";
-	} else {
-		$exec_sql_str = "select user_id, user_name from WM_USER where user_passwd = '" . $usr_pass . "' and user_name ='" . $usr_name . "' ";
-	}
+    my $usr_name = $c->param('user_name');
+    my $usr_pass = $c->param('user_pass'); 
+    my $old_usr_pass = $c->param('old_pass'); #only for update
+    my $exec_sql_str;
 
-	### error checking ????? ##############
+
+    if(defined($old_usr_pass)) {
+        $exec_sql_str = "select user_id, user_name from WM_USER where user_passwd = '" . $old_usr_pass . "' and user_name ='" . $usr_name . "' ";
+    } else {
+        $exec_sql_str = "select user_id, user_name from WM_USER where user_passwd = '" . $usr_pass . "' and user_name ='" . $usr_name . "' ";
+    }
+
+    ### error checking ????? ##############
     my $dbh = $::dbh;
-	my $sth = $dbh->prepare($exec_sql_str);
-	$sth->execute();
-	my @user_row = $sth->fetchrow_array;
-	my $row_count = $sth->rows;
-	### error checking ????? ##############
-	return ($user_row[0],$user_row[1],$usr_pass);
+    my $sth = $dbh->prepare($exec_sql_str);
+    $sth->execute();
+    my @user_row = $sth->fetchrow_array;
+    my $row_count = $sth->rows;
+    ### error checking ????? ##############
+    return ($user_row[0],$user_row[1],$usr_pass);
 }
 
+sub pre_auth2
+{
+    my $c = shift;
+    my $usr_name = $c->param('user_name');
+    my $usr_pass = $c->param('user_pass'); 
+    my $old_usr_pass = $c->param('old_pass'); #only for update
+    my $exec_sql_str;
+
+    my $local_dbh = $::dbh;
+
+    my $password_digest = Util::digest_pass($usr_pass);
+    my $password_old_digest = Util::digest_pass($old_usr_pass);
+
+    ##################################
+    #password digest function to add##
+    # do not want to touch db  #######
+    ##################################
+
+    
+    my ($db_usr_id, $db_usr_name, $db_usr_pass)  = $local_dbh->selectrow_array("select user_id, user_name, user_passwd from WM_USER where user_name = ? ", {}, $usr_name);
+    $moLog->info(" data base  pre_auth2 " . " " . $db_usr_id  . " " . $db_usr_name . " " . $db_usr_pass);
+
+
+    if(isset($old_usr_pass) && ($db_usr_pass eq $old_usr_pass) || $db_usr_pass eq $password_old_digest) 
+    {     
+        return ($db_usr_id, $db_usr_name, $usr_pass); 
+    }
+    elsif (($db_usr_pass eq $usr_pass) || ($db_usr_pass eq $password_digest))
+    {
+        return ($db_usr_id, $db_usr_name,$db_usr_pass); 
+    }
+    else
+    {
+        return (); 
+    }
+
+}
 
 #helper method
 sub authorize
 {
-	my $c = shift;
-	my $host = undef;
-	my $user_id = shift;
-	my $user_name = shift;
-	my $sessionID = genSessionID();
-	my $init_count = 0;
-	my $init_date_count = 0;
-	my $init_tab_state = 0;
+    my $c = shift;
+    my $host = undef;
+    my $user_id = shift;
+    my $user_name = shift;
+    my $sessionID = genSessionID();
+    my $init_count = 0;
+    my $init_date_count = 0;
+    my $init_tab_state = 0;
 
-	$c->session->{wmSessionID} = $sessionID;
-	$c->session->{wmUserID} = $user_id;
-	$c->session->{wmUserName} = $user_name;
-	$c->session->{Counter} = $init_count;
-	$c->session->{tab_state} = $init_tab_state;
-	$c->session->{dt_cnter} = $init_date_count;
+    $c->session->{wmSessionID} = $sessionID;
+    $c->session->{wmUserID} = $user_id;
+    $c->session->{wmUserName} = $user_name;
+    $c->session->{Counter} = $init_count;
+    $c->session->{tab_state} = $init_tab_state;
+    $c->session->{dt_cnter} = $init_date_count;
     my $expireFiveDays = 60 * 60 * 24 * 5;
-	$c->session(expiration => $expireFiveDays);
-#	$c->session(expires => undef);
-	$c->session(domain => undef);
-	my $sessionInstance = 'sess1';
-#	$c->render(template => "mainview", format => "html")
+    $c->session(expiration => $expireFiveDays);
+#    $c->session(expires => undef);
+    $c->session(domain => undef);
+    my $sessionInstance = 'sess1';
+#    $c->render(template => "mainview", format => "html")
 
 }
 
 #helper method
 sub renderMainView
 {
-	my $c = shift;
-	my $errObj = shift;
-	$c->stash(tabMap => \%tabMap);
-	#JJExecPageSQL.pl
-	$c->exec_page($errObj);
+    my $c = shift;
+    my $errObj = shift;
+    $c->stash(tabMap => \%tabMap);
+    #JJExecPageSQL.pl
+    $c->exec_page($errObj);
 }
 
 #helper method
 sub sessionReady
 {
-	my $c = shift;
-	my $sessionID = $c->session->{wmSessionID}; 
-	if (defined($sessionID) && ($sessionID !~ /^\s*\t*$/)) 
-	{
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
+    my $c = shift;
+    my $sessionID = $c->session->{wmSessionID}; 
+    if (defined($sessionID) && ($sessionID !~ /^\s*\t*$/)) 
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 app->start;
