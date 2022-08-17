@@ -25,6 +25,8 @@
 	<li style="font-size:24px;"> PASSWORD: <input name="user_pass" type="password"> </li>
 	<li style="padding:10px 0px 0px 5px;font-size:12px;"> Not Registered ? 
 		<a style="text-decoration:underline" onclick="document.location='/mojoMarks/registration'"> Register </a> </li>
+            <li style="padding-left: 15px; font-size:14px;"> sample login </li>
+             <li style="padding-left: 15px; font-size:14px;"> boxtop / boxtop  </li>
 	<li style="float:right; font-size:18px; color: <%= $colorStyle %>;"> <%= $displayText %>  <%= $userName %> </li>
 	<li style="position:absolute; top:140px; right:5px; padding-top:30px; padding-left:10px;"> <input name="submit" type="submit" value="Submit" style="font-size:10pt;"> </li>
        </ul>
