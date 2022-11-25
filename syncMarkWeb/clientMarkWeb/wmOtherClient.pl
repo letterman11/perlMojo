@@ -279,7 +279,7 @@ sub build_data_from_buffer
         my $bmBuffer = shift;
 
         $$bmBuffer .= $nwBuffer;
-        return $true if $nwBuffer =~ /$END_DATA/ || $$bmBuffer =~ /$END_DATA/ms;
+        return $true if (($nwBuffer =~ /$END_DATA/) || ($$bmBuffer =~ /$END_DATA/s));
         return $false;
 
 }
@@ -297,9 +297,10 @@ sub build_data_from_buffer_two
 		my $currBuffer = $nwBuffer;
 		my $xCrossbmBuffer = $prevBuffer . $currBuffer;
 		####################################################
-		
-        #return $true if $nwBuffer =~ /$END_DATA/ || $xCrossbmBuffer =~ /$END_DATA/ms;
-		return $true if $xCrossbmBuffer =~ /$END_DATA/ms;
+        
+        LOG " @@@@@@@ PREV BUFFER " . $prevBuffer if length($nwBuffer) == 0;
+		LOG "@@@@@@@@@@@@@@ BUFFER @@@@@@@@@ \n" . $xCrossbmBuffer  if $xCrossbmBuffer =~ /$END_DATA/s;
+		return $true if $xCrossbmBuffer =~ /$END_DATA/s;
 		$prevBuffer = $currBuffer;
         return $false;
 
@@ -414,27 +415,35 @@ while (1) {
 	my $bmData;
 	my $bmBuffer;
 
-        $socket->timeout(5); 
+        $socket->timeout(5000); 
 	LOG "at begin of loop from server";
-	do {
+ 
+    do {
+        LOG "inside serv rec loop" unless $::inside++;
 
 		$bmData = ();
 
 		$socket->recv($bmData, $bufferSize);
 
+        $::dataSize = length($bmData);
+        LOG "size of data recv = " . $::dataSize;
+        
 		#======== Decoded buffer ----
 		my $decoded_bmData = decode('UTF-8', $bmData);
 		#======== Decoded buffer ----
 
-
 		#$EOF = build_data_from_buffer($bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
-		$EOF = build_data_from_buffer($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
-
+		#$EOF = build_data_from_buffer($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
+		$EOF = build_data_from_buffer_two($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
+ 
 		#debug_println("After recv of socket");
-
+	
 	}      
-	while(!$EOF);
+	while((!$EOF) && ($::dataSize != 0));
+   
 
+
+    $::inside = 0;
 	LOG "just outside end loop from server";
 
 	LOG "**** LOG OF RECIEVED MESSAGE ****************************************************************************";
