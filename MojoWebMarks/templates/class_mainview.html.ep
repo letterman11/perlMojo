@@ -43,8 +43,8 @@
 <title> WebMarks Application </title>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
-<link rel="shortcut icon" href="/dc.ico">
-<link rel="icon" href="/dc.ico">
+<link rel="shortcut icon" href="/static/images/dc.ico">
+<link rel="icon" href="/static/images/dc.ico">
 <link rel="stylesheet" href="/static/mojo/css/mojo_style.css" type="text/css">
 <script type="text/javascript" src="/static/mojo/js/mojo_common.js"> </script>
 </head>
