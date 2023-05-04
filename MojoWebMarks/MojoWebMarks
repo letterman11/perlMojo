@@ -360,7 +360,8 @@ sub update_mark
 
     eval {
 
-        ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+        #($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+        ($place_id)  = $local_dbh->selectrow_array("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
     };
 
     if ($@) 
