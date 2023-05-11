@@ -11,8 +11,9 @@ my $dbc = DbGlob->new();
 my $dbh = $dbc->connect( )
                 or die "Cannot Connect to Database $DBI::errstr\n";
 
-#my $hist_sql_str = "select b.url, a.title, a.dateAdded from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID and a.USER_ID = ?  "; 
-my $hist_sql_all_str = "select b.url, a.title, a.dateAdded from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID "; 
+my $hist_sql_all_str = q{ select b.url, a.title, a.dateAdded 
+                            from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID 
+                        }; 
 
 
 sub gen_histogram
@@ -54,7 +55,10 @@ sub gen_histogram
 
         foreach (@words)
         {
-            next if /(?:(\ba\b)|(\bas\b)|(\bthe\b)|(\bby\b)|(\bon\b)|(\band\b)|(\bis\b)|(\bFor\b)|(\bwith\b)|(\bIn\b)|(\bto\b)|(\bof\b)|(\b( +)\b)|(-|\+)|(\|)|[&-:><'#])/i;
+            next if /(?:(\ba\b)|(\bas\b)|(\bthe\b)|(\bby\b)|(\bon\b)
+                                |(\band\b)|(\bis\b)|(\bFor\b)|(\bwith\b)|(\bIn\b)|(\bto\b)
+                                    |(\bof\b)|(\b( +)\b)|(-|\+)|(\|)|[&-:><'#])/i;
+
             next if /\b[[:cntrl:]]+\b/;
             next if not /[\x00-\x7f]/;
             s/\s+$//g;
@@ -119,11 +123,13 @@ sub gen_optionListDiv
 {
    gen_histogram();
    my $str;
+
    for my $option (@H[1..15])
    {
        $option =~ s/\|/ /g; 
        $str .= qq#\n\t<option value="$option"> $option</option>#;
    }
+
    my $out_hist_opts = <<"OPTION_TABLE";
        <div style="display:inline-block" id="optionDiv">
        <form>
@@ -139,4 +145,3 @@ OPTION_TABLE
 
 gen_histogram();
 
-#gen_optionlistForm();
