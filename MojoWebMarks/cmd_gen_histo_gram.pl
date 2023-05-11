@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 
 use strict;
+use diagnostics;
+use english; 
 use lib "C:/Users/angus/perlMojo/MojoWebMarks/script_src";
 use lib "C:/Users/angus/perlMojo/MojoWebMarks";
 
@@ -112,8 +114,11 @@ sub gen_histogram
         {
             my ($d) = ($k =~ /(\d+)/);
             push @H, $H{$k};
-            printf("%-85s %-30s %2d\n", $H{$k}, '*' x ($d/100), $d) if $d > 100;
-            printf("%-85s %-30s %2d\n", $H{$k}, '#' x $d, $d) if $d < 100;
+            $H{$k} =~ s/\s\t/o/g;
+            #printf("%-85s|%-30s%2d\n", $H{$k}, '*' x ($d/100), $d) if $d >= 100;
+            printf("%-55s|%-30s%2d\n", $H{$k}, '*' x ($d/100), $d) if $d >= 100;
+            printf("%-55s|%-30s%2d\n", $H{$k}, '#' x ($d/10), $d) if $d < 100 and $d >= 10;
+            printf("%-55s|%-30s%1d\n", $H{$k}, '-' x $d, $d) if $d < 10;
         }
    }
 
