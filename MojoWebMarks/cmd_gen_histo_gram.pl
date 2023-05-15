@@ -3,6 +3,8 @@
 use strict;
 use diagnostics;
 use english; 
+use utf8;
+
 use lib "C:/Users/angus/perlMojo/MojoWebMarks/script_src";
 use lib "C:/Users/angus/perlMojo/MojoWebMarks";
 
@@ -63,8 +65,10 @@ sub gen_histogram
 
             next if /\b[[:cntrl:]]+\b/;
             next if not /[\x00-\x7f]/;
+
             s/\s+$//g;
             s/^\s+//g;
+
             if (exists($markHist{$_}))
             {
                 $markHist{$_}->{count}++;
@@ -109,16 +113,21 @@ sub gen_histogram
    } #end for
   
    {
+        my $pretty;
         no warnings;
+
         for my $k (sort { $b <=> $a}  keys %H) 
         {
             my ($d) = ($k =~ /(\d+)/);
             push @H, $H{$k};
             $H{$k} =~ s/\s\t/o/g;
-            #printf("%-85s|%-30s%2d\n", $H{$k}, '*' x ($d/100), $d) if $d >= 100;
-            printf("%-55s|%-30s%2d\n", $H{$k}, '*' x ($d/100), $d) if $d >= 100;
-            printf("%-55s|%-30s%2d\n", $H{$k}, '#' x ($d/10), $d) if $d < 100 and $d >= 10;
-            printf("%-55s|%-30s%1d\n", $H{$k}, '-' x $d, $d) if $d < 10;
+
+            $pretty =             $d >= 100   &&                 '*' x ($d/100) ;
+            $pretty = $pretty ||  ($d < 100   && $d >= 10  &&    '#' x ($d/10)  ); 
+            $pretty = $pretty ||  ($d < 10    &&                 '-' x $d       ); 
+
+            printf("%-55s|%-30s%1d\n", $H{$k}, $pretty, $d);
+
         }
    }
 
