@@ -94,6 +94,7 @@ sub gen_histogram
     my %H = ();
 
     for my $mrow (@markHistHiLo) {
+
      if(exists ($H{$mrow->[1] . $AL}) && ($FL == $nxt)) {
           $AL = $AT; 
           $AT++;
@@ -124,7 +125,8 @@ sub gen_histogram
 
             $pretty =             $d >= 100   &&                 '*' x ($d/100) ;
             $pretty = $pretty ||  ($d < 100   && $d >= 10  &&    '#' x ($d/10)  ); 
-            $pretty = $pretty ||  ($d < 10    &&                 '-' x $d       ); 
+            $pretty = $pretty ||  ($d < 10    && $d > 5    &&    '-' x $d       ); 
+            $pretty = $pretty ||  ($d <= 5    &&                 '!' x $d       ); 
 
             printf("%-55s|%-30s%1d\n", $H{$k}, $pretty, $d);
 
