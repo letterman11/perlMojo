@@ -4,9 +4,9 @@ use dcoda_acme;
 
 CREATE TABLE IF NOT EXISTS `WM_PLACE` (
   `PLACE_ID` mediumint(8) unsigned NOT NULL,
-  `URL` varchar(255) DEFAULT NULL,
+  `URL` varchar(5500) DEFAULT NULL,
   `TYPE` tinyint(3) unsigned DEFAULT NULL,
-  `TITLE` varchar(255) DEFAULT NULL,
+  `TITLE` varchar(5500) DEFAULT NULL,
   `REV_HOST` varchar(255) DEFAULT NULL,
   `VISIT_COUNT` tinyint(3) unsigned DEFAULT '0',
   `FREQUENCY` tinyint(3) unsigned NOT NULL DEFAULT '0',

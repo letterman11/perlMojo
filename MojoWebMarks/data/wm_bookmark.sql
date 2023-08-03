@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `WM_BOOKMARK` (
   `USER_ID` varchar(15)  NOT NULL,
   `PLACE_ID` mediumint(8) unsigned NOT NULL,
   `TYPE` tinyint(3) unsigned DEFAULT NULL,
-  `TITLE` varchar(255) DEFAULT NULL,
+  `TITLE` varchar(5500) DEFAULT NULL,
   `KEYWORD_ID` smallint(5) unsigned DEFAULT NULL,
   `FOLDER_TYPE` text,
   `DATEADDED` bigint(20) unsigned DEFAULT NULL,
