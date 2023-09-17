@@ -3,18 +3,18 @@
 package mojoMarks;
 
 use Mojolicious::Lite;
-require "/home/angus/perlProjects/MojoWebMarks/JJExecPageSQL.pl";
-require "/home/angus/perlProjects/MojoWebMarks/SQLStrings.pl";
+require "/home/angus/perlMojo/MojoWebMarks/JJExecPageSQL.pl";
+require "/home/angus/perlMojo/MojoWebMarks/SQLStrings.pl";
 use lib '/home/angus/dcoda_net/lib';
-use lib '/home/angus/perlProjects/MojoWebMarks';
-use lib '/home/angus/perlProjects/MojoWebMarks/script_src';
+use lib '/home/angus/perlMojo/MojoWebMarks';
+use lib '/home/angus/perlMojo/MojoWebMarks/script_src';
 use GenError;
 use GenMarksMojo;
 app->plugin('Config');
 app->log->level('info');
 
 use Mojo::Log;
-our $moLog = Mojo::Log->new(path => '/home/angus/perlProjects/MojoWebMarks/log/production.log');
+our $moLog = Mojo::Log->new(path => '/home/angus/perlMojo/MojoWebMarks/log/production.log');
 
 
 
@@ -41,7 +41,7 @@ our $DEBUG;
 our $NO_HEADER;
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-our $dbConf = "/home/angus/perlProjects/MojoWebMarks/stockDbConfig.dat"; #@@
+our $dbConf = "/home/angus/perlMojo/MojoWebMarks/stockDbConfig.dat"; #@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 ###### Global Database Handle ##########################################################
@@ -52,7 +52,7 @@ package main
     our $dbh = $dbg->connect()
         or GenError->new(Error->new(102))->display() and 
                 die "Cannot Connect to Database $DbGlob::errstr\n";
-    require '/home/angus/perlProjects/MojoWebMarks/gen_histo_gram_multi.pl';
+    require '/home/angus/perlMojo/MojoWebMarks/gen_histo_gram_multi.pl';
 }
 ##########################################################################################
 
@@ -73,6 +73,7 @@ under '/' =>  sub {
     ###################
     #validate session
     #################
+    $moLog->error(" ******* Session Val HERE ");
     if (sessionReady($_[0])) 
     {
         #Session exists proceed to other routes
@@ -226,6 +227,7 @@ sub regAuth
 sub authorCredFunc
 {
     my $c = shift;
+    $moLog->error("Author CredFunc ");
 
     #my ($user_id,$user_name) = $c->pre_auth();
     my ($user_id,$user_name) = $c->pre_auth2();
@@ -401,7 +403,8 @@ sub delete_mark
 
     eval {
 
-        ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+	# ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+        ($place_id)  = $local_dbh->selectrow_array("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
     }; 
 
     if ($@) 
@@ -508,7 +511,7 @@ sub pre_auth2
 
     
     my ($db_usr_id, $db_usr_name, $db_usr_pass)  = $local_dbh->selectrow_array("select user_id, user_name, user_passwd from WM_USER where user_name = ? ", {}, $usr_name);
-    $moLog->info(" data base  pre_auth2 " . " " . $db_usr_id  . " " . $db_usr_name . " " . $db_usr_pass);
+    $moLog->error(" data base  pre_auth2 " . " " . $db_usr_id  . " " . $db_usr_name . " " . $db_usr_pass);
 
 
     if(isset($old_usr_pass) && ($db_usr_pass eq $old_usr_pass) || $db_usr_pass eq $password_old_digest) 
