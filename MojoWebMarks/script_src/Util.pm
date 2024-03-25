@@ -25,7 +25,7 @@ my $tmp_dir = cwd;
 my $sep = File::Spec->catfile('', '');
 $tmp_dir .= $sep . "sessions";
 
-our $sessionDbConf = "$::Bin/../../dcoda_net/lib/sessionFile.dat"; 
+our $sessionDbConf = "sessionFile.dat"; 
 
 BEGIN
 {
