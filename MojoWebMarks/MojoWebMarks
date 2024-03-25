@@ -3,18 +3,20 @@
 package mojoMarks;
 
 use Mojolicious::Lite;
-require "/home/angus/perlMojo/MojoWebMarks/JJExecPageSQL.pl";
-require "/home/angus/perlMojo/MojoWebMarks/SQLStrings.pl";
-use lib '/home/angus/dcoda_net/lib';
-use lib '/home/angus/perlMojo/MojoWebMarks';
-use lib '/home/angus/perlMojo/MojoWebMarks/script_src';
+use FindBin '$Bin';
+
+require "$Bin/JJExecPageSQL.pl";
+require "$Bin/SQLStrings.pl";
+use lib "$Bin";
+use lib "$Bin/script_src";
+
 use GenError;
 use GenMarksMojo;
 app->plugin('Config');
 app->log->level('info');
 
 use Mojo::Log;
-our $moLog = Mojo::Log->new(path => '/home/angus/perlMojo/MojoWebMarks/log/production.log');
+our $moLog = Mojo::Log->new(path => "$Bin/logs/production.log");
 
 
 
@@ -41,7 +43,7 @@ our $DEBUG;
 our $NO_HEADER;
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-our $dbConf = "/home/angus/perlMojo/MojoWebMarks/stockDbConfig.dat"; #@@
+our $dbConf = "$Bin/stockDbConfig.dat"; #@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 ###### Global Database Handle ##########################################################
@@ -52,7 +54,7 @@ package main
     our $dbh = $dbg->connect()
         or GenError->new(Error->new(102))->display() and 
                 die "Cannot Connect to Database $DbGlob::errstr\n";
-    require '/home/angus/perlMojo/MojoWebMarks/gen_histo_gram_multi.pl';
+    require "$mojoMarks::Bin/gen_histo_gram_multi.pl";
 }
 ##########################################################################################
 
