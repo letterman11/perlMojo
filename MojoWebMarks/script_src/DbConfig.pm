@@ -1,9 +1,7 @@
-package DbGlob;
+package DbConfig;
 
-#######
-# class has a DBI handle as opposed to being subclassed by DBI e.g., DbConfig
-#######
 use strict;
+our @ISA = qw(DBI);
 use DBI;
 
 use FileHandle;
@@ -11,20 +9,17 @@ use FileHandle;
 $::attr = { 
 		PrintError => 0,
 		RaiseError => 1,
-        mysql_auto_reconnect => 1,
-        mysql_enable_utf8mb4 => 1,
 	}; 
 
 $::attr2 = { 
 		PrintError => 1,
 		RaiseError => 0,
-#        mysql_auto_reconnect => 1,
 	}; 
 
-    
+
 ####################
 # Test alias
-*DbGlob::errstr = *DBI::errstr; 
+*DbConfig::errstr = *DBI::errstr; 
 #
 ###################
 
@@ -40,19 +35,6 @@ sub new
 	return \%configHash;
 }
 
-sub connect
-{
-   my $self = shift;
-   $self->{'DBHandle'}  =  DBI->connect( $self->parse_config );
-   return $self->dbiHandle;
-}
-
-sub dbiHandle
-{
-   my $self = shift;
-   return $self->{'DBHandle'};
-
-}
 
 sub _initialize
 {
@@ -70,10 +52,19 @@ sub _initialize
 
 		} 
 		$fh->close;
-  	} else { die "Error opening configfile \n"; }
+  	} else { die "Error opening configfile $defaultConfFile \n"; }
 	
 }
 
+sub _initialize2
+{
+	my $self = $_[0];
+	my %configH;
+	eval 'stockDB.pl';		
+	print STDERR "here $@ ";
+       %$self = (%$self,%configH);
+	
+}
 
 sub dbName 
 {
@@ -122,7 +113,7 @@ sub dbPort
 
 }
 
-sub parse_config 
+sub connect 
 {
 	my $self = shift;
 	my $dbdriver = $self->dbdriver; 
@@ -131,7 +122,7 @@ sub parse_config
 	my $dbpass = $self->dbPass; 
 	my $dbhost = $self->dbHost; 
 	my $dbport = $self->dbPort; 
-    my $dsn; 
+      	my $dsn; 
 
 	if ($dbdriver =~ /SQLite/i) 
 	{
@@ -149,10 +140,11 @@ sub parse_config
 		$dsn = $dbdriver . $dbname;
 	}
 
-   return ($dsn,$dbuser,$dbpass, $::attr);
+    no warnings;
+	return $self->SUPER::connect($dsn,  $dbuser, $dbpass, $::attr );
+  
 
 }
-
 
 
 1; 
