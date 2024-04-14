@@ -14,7 +14,8 @@
 <div id="main">
  <div id="header">
   <!-- <h1 class="left"> <a href="/webMarks"> WEBMARKS </a></h1> -->
-  <a href="/mojoMarks/webMarks"> <img class="banner_image_left" alt="dcoda logo" src="/static/images/webmarks_orange.png" /> </a>
+  <!-- <a href="/mojoMarks/webMarks"> <img class="banner_image_left" alt="dcoda logo" src="/static/images/webmarks_orange.png" /> </a> -->
+  <a href="/mojoMarks/webMarks"> <img class="banner_image_left" alt="webmarks logo" src="/static/images/mojoMarks_Brownies2.png" /> </a>
   <a href="/"> <img class="banner_image" alt="dcoda logo" src="/static/images/DCBANNER_CROP2_219_31_2.jpg" /> </a>
  </div>
  <div class="registration">
