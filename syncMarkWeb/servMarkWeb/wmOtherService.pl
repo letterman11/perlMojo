@@ -6,8 +6,11 @@
 #----------------------------------------------------------#
 
 use strict;
-#use lib "/home/ubuntu/perlProjects/syncMarkWeb/servMarkWeb";
-use lib "C:\\Users\\angus\\perlMojo\\syncMarkWeb\\servMarkWeb";
+
+use FindBin '$Bin';
+use lib "$Bin";
+
+#use lib "$Bin/syncMarkWeb/servMarkWeb";
 
 use mark_init;
 use IO::Socket;
@@ -51,7 +54,8 @@ my %userTable = ();
 
 
 #my $dbConFile = "/home/ubuntu/perlProjects/syncMarkWeb/servMarkWeb/wmDBConfig.dat";
-my $dbConFile = "C:\\Users\\angus\\perlMojo\\syncMarkWeb\\servMarkWeb\\wmDBConfig.dat";
+#my $dbConFile = "C:\\Users\\angus\\perlMojo\\syncMarkWeb\\servMarkWeb\\wmDBConfig.dat";
+my $dbConFile = "$Bin/wmDBConfig.dat";
 
 my %ATTR = (
                 LINK   => 'href',
