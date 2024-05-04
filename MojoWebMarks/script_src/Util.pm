@@ -15,7 +15,7 @@ use Digest;
 my $local_time_zone_nys = "America/New_York"; #for DateTime module does not do right if time zone is left off
 
 use Mojo::Log;
-our $moLog = Mojo::Log->new(path => "$::Bin/logs/production.log");
+our $moLog = Mojo::Log->new(path => "$mojoMarks::Bin/logs/production.log");
 
 
 #my $tmp_dir = "/services/webpages/d/c/dcoda.net/tmp";
@@ -25,7 +25,7 @@ my $tmp_dir = cwd;
 my $sep = File::Spec->catfile('', '');
 $tmp_dir .= $sep . "sessions";
 
-our $sessionDbConf = "sessionFile.dat"; 
+our $sessionDbConf = "$mojomarks::Bin/sessionFile.dat"; 
 
 BEGIN
 {
