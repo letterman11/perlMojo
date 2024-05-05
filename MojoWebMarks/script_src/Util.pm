@@ -25,7 +25,7 @@ my $tmp_dir = cwd;
 my $sep = File::Spec->catfile('', '');
 $tmp_dir .= $sep . "sessions";
 
-our $sessionDbConf = "$mojomarks::Bin/sessionFile.dat"; 
+our $sessionDbConf = "$mojoMarks::Bin/sessionFile.dat"; 
 
 BEGIN
 {
@@ -340,6 +340,7 @@ sub storeSQL2
     my $sessionID = shift;
     my $userID = shift;
 
+    $moLog->info("Start storeSQL 222 " );
     my $sessObj = SessionObject->new();
     $sessObj->{'SESSIONDATA'} =  $storedSQL;
     $sessObj->{'wmSESSIONID'} = $sessionID;
@@ -402,6 +403,7 @@ sub storeSessionObjectDB
     my $APPL;
     $APPL = <DATA>;
     close DATA;
+    $moLog->info("Start storeSessionODB 222 " );
     
     my $sessionObject = shift;
 
