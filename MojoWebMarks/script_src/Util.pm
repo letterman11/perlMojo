@@ -12,20 +12,18 @@ use Cwd qw(cwd);
 use File::Spec;
 use DateTime;
 use Digest;
-my $local_time_zone_nys = "America/New_York"; #for DateTime module does not do right if time zone is left off
-
 use Mojo::Log;
-our $moLog = Mojo::Log->new(path => "$mojoMarks::Bin/logs/production.log");
 
+my $local_time_zone_nys = "America/New_York"; #for DateTime module does not do right if time zone is left off
+my $sep = File::Spec->catfile('', ''); # perl code kludge to get file path separator
 
-#my $tmp_dir = "/services/webpages/d/c/dcoda.net/tmp";
+our $moLog = Mojo::Log->new(path => "$mojoMarks::Bin".$sep."logs".$sep."production.log");
+
 #my $tmp_dir = "/tmp";
-
 my $tmp_dir = cwd;
-my $sep = File::Spec->catfile('', '');
 $tmp_dir .= $sep . "sessions";
 
-our $sessionDbConf = "$mojoMarks::Bin/sessionFile.dat"; 
+our $sessionDbConf = "$mojoMarks::Bin".$sep."sessionFile.dat"; 
 
 BEGIN
 {
