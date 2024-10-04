@@ -60,7 +60,7 @@ sub _initialize
 	if ($fh->open("< $defaultConfFile") ) {
 		while (<$fh>) {
 			next if /^#/;
-			 if (/([A-Za-z0-9_]+)=([A-Za-z0-9_\-\:\.\/]*)/) 
+			 if (/([A-Za-z0-9_]+)=([A-Za-z0-9_\*\-\:\.\/]*)/) 
 			{ 
 				my ($key,$value) = ($1,$2);
 				$configHash->{$key}=$value;
