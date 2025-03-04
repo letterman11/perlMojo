@@ -182,7 +182,7 @@ sub insertDB_bookmarks
     foreach my $net_urlKey (keys %net_webMarks)
     {
 
-		if (exists $webMarks{$net_urlKey})  #  DOES HASH FUNCTION LOOKUP OF URL -- NO NEED TO LOOP
+        if (exists $webMarks{$net_urlKey})  #  DOES HASH FUNCTION LOOKUP OF URL -- NO NEED TO LOOP
         {
             next;
         }
@@ -214,37 +214,38 @@ sub insertDB_bookmarks
         $tbl1MaxId++;
         $tbl2MaxId++;
 
-		#------- wm_bookmark------------------------
-		my $sql_insert_wm_book = "insert into WM_BOOKMARK (BOOKMARK_ID, PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?,?)";
+        #------- wm_bookmark------------------------
+        my $sql_insert_wm_book = "insert into WM_BOOKMARK (BOOKMARK_ID, PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?,?)";
 
-		my @bind_vals_bookmark = ($tbl1MaxId,
-						$tbl2MaxId,
-						$title,
-						$dateAdded,
-						$userID);
+        my @bind_vals_bookmark = ($tbl1MaxId,
+                        $tbl2MaxId,
+                        $title,
+                        $dateAdded,
+                        $userID);
 
-		my $rc = $dbh->do($sql_insert_wm_book, {}, @bind_vals_bookmark); 
+        my $rc = $dbh->do($sql_insert_wm_book, {}, @bind_vals_bookmark); 
 
-		#------- wm_bookmark------------------------
-			
-		#------- wm_place------------------------
-		my $sql_insert_wm_place = "insert into WM_PLACE (PLACE_ID, URL, TITLE) values (?, ?, ?)";
+        #------- wm_bookmark------------------------
             
-		my @bind_vals_place = ($tbl2MaxId,
-								$url,
-								$title);
+        #------- wm_place------------------------
+        my $sql_insert_wm_place = "insert into WM_PLACE (PLACE_ID, URL, TITLE) values (?, ?, ?)";
+            
+        my @bind_vals_place = ($tbl2MaxId,
+                                $url,
+                                $title);
 
-		my $rc2 = $dbh->do($sql_insert_wm_place, {}, @bind_vals_place);
-		#------- wm_place------------------------
-		# error checks later to be put in place
-		#######################################
+        my $rc2 = $dbh->do($sql_insert_wm_place, {}, @bind_vals_place);
+        #------- wm_place------------------------
+        # error checks later to be put in place
+        #######################################
 
-	$dbh->disconnect() or LOG "Disconnection failed: $DBI::errstr\n" and warn "Disconnection failed: $DBI::errstr\n";
+    #$dbh->disconnect() or LOG "Disconnection failed: $DBI::errstr\n" and warn "Disconnection failed: $DBI::errstr\n";
     LOG "-----------------INSERTDB Server Comparison Routine End -----------------";
     LOG "-----------------INSERTDB Server  End -----------------";
 
     }
  
+    $dbh->disconnect() or LOG "Disconnection failed: $DBI::errstr\n" and warn "Disconnection failed: $DBI::errstr\n";
 }
 
 
