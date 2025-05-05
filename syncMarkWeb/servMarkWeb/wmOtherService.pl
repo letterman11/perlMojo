@@ -96,6 +96,9 @@ sub queryDB_bookmarks
     #my $dbc = DbConfig->new($dbConFile);
     my $dbh = $dbg->connect() or die "Error $!\n";
     
+    #For azure sql server long columns -- works for now
+    $dbh->{LongReadLen} = 65535 * 1024;  
+    #
     #load data (a.title, a.dataAdded, b.url) from join of WM_BOOKMARK and WM_PLACE tables
     #do compare of b.url to global hash if miss then add above data to global hash
     #
@@ -421,7 +424,7 @@ sub CLOSESOCK
     
         #------------------------------------------------------------
         #  Do not insert into database pointed to by server script
-        #insertDB_bookmarks($bmFileName);
+        insertDB_bookmarks($bmFileName);
         #------------------------------------------------------------
         LOG "Outputing to server bookmarks file";
             
