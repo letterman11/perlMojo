@@ -63,7 +63,7 @@ my %ATTR = (
                 ID     => 'id',
 );
 
-open (LOG_H, ">$logFile") or die "cannot open $logFile: $!\n";
+open (LOG_H, ">>$logFile") or die "cannot open $logFile: $!\n";
 
 LOG_H->autoflush(1);
 
