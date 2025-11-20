@@ -23,7 +23,9 @@
 hostname=
 user=
 password=
-database=/home/angus/dcoda_net/cgi-bin/webMarks/cgi-bin/dcoda_acme.webMarks
+database=/home/angus/dcoda_net/db/dcoda_acme.webMarks
+#database=/home/angus/dcoda_net/db/dcoda_acme.webMarks.eros
+
 dbdriver=dbi:SQLite:dbname
 
 #Mysql

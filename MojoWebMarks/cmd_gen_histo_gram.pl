@@ -2,11 +2,15 @@
 
 use strict;
 use diagnostics;
-use english; 
+#use english; 
 use utf8;
+use FindBin '$Bin';
 
-use lib "C:/Users/angus/perlMojo/MojoWebMarks/script_src";
-use lib "C:/Users/angus/perlMojo/MojoWebMarks";
+#use lib "C:/Users/angus/perlMojo/MojoWebMarks/script_src";
+#use lib "C:/Users/angus/perlMojo/MojoWebMarks";
+
+use lib "$Bin/script_src";
+use lib "$Bin";
 
 use DbGlob;
 

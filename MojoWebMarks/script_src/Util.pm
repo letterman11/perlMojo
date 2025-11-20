@@ -159,7 +159,8 @@ sub  convertDateEpoch
     $moLog->info(" 2/3 thru   Epoc func " . $humanDate);
     my $dateAdded = DateTime->new(year=>$year, month=>$month, day=>$day, time_zone=> $local_time_zone_nys)->epoch;
 
-    $dateAdded = $dateAdded * (1000 * 1000);
+    #$dateAdded = $dateAdded * (1000 * 1000);
+    $dateAdded = $dateAdded;
 
     return $dateAdded;
 

@@ -35,7 +35,7 @@ sub genPage
 {
    my $class = shift;
    print STDERR  "$class->{MC} second CLASS \n";
-	my $c = $class->{MC};
+   my $c = $class->{MC};
    #my $user_name = shift;
    my $user_id = shift;
    my $sort_crit = shift;
@@ -116,7 +116,8 @@ sub genTabTable
    {
        ($url,$title,$added,$bk_id) = @$row;
 
-       $added = convertTime($added);
+       #$added = convertTime($added);
+       $added = convertTime2($added);
 
        $alt =  (++$i % 2 ? 1 : 2);   
        $row_color = "row_color" . $alt;
@@ -144,6 +145,19 @@ sub convertTime
    my $unixsecs_epoch = $microsecs_epoch / (1000 * 1000);
    strftime("%m-%d-%Y %H:%M:%S", localtime($unixsecs_epoch));
 }
+
+sub convertTime2
+{
+   my $microsecs_epoch = shift;
+   if ($microsecs_epoch =~ /[0-9]{15,16}/)
+   {
+        return convertTime($microsecs_epoch);
+   }
+   #my $unixsecs_epoch = $microsecs_epoch / (1000 * 1000);
+   my $unixsecs_epoch = $microsecs_epoch;
+   strftime("%m-%d-%Y %H:%M:%S", localtime($unixsecs_epoch));
+}
+
 
 sub renderDefaultView()
 {

@@ -196,7 +196,10 @@ sub exec_page
 
     elsif (isset($searchDateStart) && isset($searchDateEnd) && ($searchDateStart ne $searchDateEnd)) 
     {
-        my $dateAddedEnd =  int(((convertDateEpoch($searchDateEnd) / (1000 * 1000)) + (60 * 60 * 24)) * (1000 * 1000)) ;
+        #delete of mozilla microseconds in epoch
+        #my $dateAddedEnd =  int(((convertDateEpoch($searchDateEnd) / (1000 * 1000)) + (60 * 60 * 24)) * (1000 * 1000)) ;
+        #-------------------------------------------------------------------------------------------------------
+        my $dateAddedEnd =  int(((convertDateEpoch($searchDateEnd) ) + (60 * 60 * 24)) ) ;
         my $qstr =  " dateAdded between " . convertDateEpoch($searchDateStart) . " and " . $dateAddedEnd;
         #my $qstr =  " dateAdded between " . convertDateEpoch($searchDateStart) . " and " . convertDateEpoch($searchDateEnd);
 
@@ -212,7 +215,10 @@ sub exec_page
     elsif (isset($searchDateStart))
     {
         $mojoMarks::moLog->info("SearchDateStart only SQL @" . __PACKAGE__ . "@  " . __LINE__ . " "  , "\n");
-        my $dateAddedEnd =  int(((convertDateEpoch($searchDateStart) / (1000 * 1000)) + (60 * 60 * 24)) * (1000 * 1000)) ;
+        #delete of mozilla microseconds in epoch
+        #my $dateAddedEnd =  int(((convertDateEpoch($searchDateStart) / (1000 * 1000)) + (60 * 60 * 24)) * (1000 * 1000)) ;
+        #---------------------------------------------------------------------------------------------------------
+        my $dateAddedEnd =  int((convertDateEpoch($searchDateStart)  + (60 * 60 * 24) ) ) ;
         my $qstr =  " dateAdded between " . convertDateEpoch($searchDateStart) . " and " . $dateAddedEnd;
 
         $exec_sql_str = $main_sql_str . $qstr . " ) ";
