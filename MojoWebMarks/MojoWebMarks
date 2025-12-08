@@ -4,11 +4,18 @@ package mojoMarks;
 
 use Mojolicious::Lite;
 use FindBin '$Bin';
+our $untainted_bin;
 
-require "$Bin/JJExecPageSQL.pl";
-require "$Bin/SQLStrings.pl";
-use lib "$Bin";
-use lib "$Bin/script_src";
+BEGIN {
+    # Extract the trusted part of $Bin using a regular expression
+    # This assumes $Bin contains a valid path and removes any potentially malicious characters.
+    ($untainted_bin) = $Bin =~ /^(.+)$/;
+}
+
+require "$untainted_bin/JJExecPageSQL.pl";
+require "$untainted_bin/SQLStrings.pl";
+use lib "$untainted_bin";
+use lib "$untainted_bin/script_src";
 
 use GenError;
 use GenMarksMojo;
@@ -16,9 +23,7 @@ app->plugin('Config');
 app->log->level('info');
 
 use Mojo::Log;
-our $moLog = Mojo::Log->new(path => "$Bin/logs/production.log");
-
-
+our $moLog = Mojo::Log->new(path => "$untainted_bin/logs/production.log");
 
 #############################
 #external dependencies below 
@@ -43,7 +48,7 @@ our $DEBUG;
 our $NO_HEADER;
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-our $dbConf = "$Bin/stockDbConfig.dat"; #@@
+our $dbConf = "$untainted_bin/stockDbConfig.dat"; #@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 ###### Global Database Handle ##########################################################
@@ -54,7 +59,7 @@ package main
     our $dbh = $dbg->connect()
         or GenError->new(Error->new(102))->display() and 
                 die "Cannot Connect to Database $DbGlob::errstr\n";
-    require "$mojoMarks::Bin/gen_histo_gram_multi.pl";
+    require "$mojoMarks::untainted_bin/gen_histo_gram_multi.pl";
 }
 ##########################################################################################
 
@@ -199,21 +204,19 @@ sub regAuth
 
         my $hash_pass = Util::digest_pass($sqlHash->{password});
 
-        my $insert_sql_str = "INSERT INTO WM_USER (USER_ID,USER_NAME,USER_PASSWD,EMAIL_ADDRESS) VALUES (" . 
-            #"'$userID','$sqlHash->{userName}','$sqlHash->{password}','$sqlHash->{email}')";
-            "'$userID','$sqlHash->{userName}','$hash_pass','$sqlHash->{email}')";
+        my $insert_sql_str = "INSERT INTO WM_USER (USER_ID,USER_NAME,USER_PASSWD,EMAIL_ADDRESS) VALUES (?,?,?,?)";
         my $sth;
 
         eval {
     
-            $sth = $::dbh->prepare($insert_sql_str);
-            $sth->execute();
+            $sth = $::dbh->prepare($insert_sql_str,{});
+            $sth->execute($userID, $sqlHash->{userName}, $hash_pass, $sqlHash->{email});
 
         };
 
         if ($@) 
         {
-            $c->stash( colorStyle => "red", errText => $DbGlob::errstr );
+            $c->stash( colorStyle => "red", errText => $DbGlob::errstr);
             $c->render(template => 'class_registration', format => 'html'); 
         }
         else
@@ -276,20 +279,18 @@ sub insert_mark
 
     my $local_dbh = $::dbh;
 
-
-    
     ######################################################################################
     # Use of autoincrement on cols BOOKMARK_ID and PLACE_ID would avoid the code below 
     # for high transaction situation, but it would probably be better to collapse the 
     # two tables  into one table to just increment one id
     ######################################################################################
+    # DONE added autoincrement 
 
+    #my ($tbl1MaxId) = $local_dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
+    #my ($tbl2MaxId) = $local_dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
 
-    my ($tbl1MaxId) = $local_dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
-    my ($tbl2MaxId) = $local_dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
-
-    $tbl1MaxId++;
-    $tbl2MaxId++;
+    #$tbl1MaxId++;
+    #$tbl2MaxId++;
 
     #######################################################################################
     #######################################################################################    
@@ -298,49 +299,38 @@ sub insert_mark
     #Duplicate URL check => if so fail out to index reporting URL already exists;
     # If no duplicate go ahead and insert into database WM_PLACE
     #############################################################################
-    my ($dup_wm_place_url) = $local_dbh->selectrow_array("select b.url from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID and a.USER_ID = '$user_id' and b.URL = " . $local_dbh->quote($url) );
-
-    if (defined($dup_wm_place_url)) {
-        $c->renderMainView(Error->new(150));
-        return 0;
-    }
-
-    ####################################################################
-    # Could use transactions here to fall back if last operation on 
-    # wm_bookmark fails to roll back previous inserts
-    ####################################################################
 
     eval {
-         $local_dbh->do("insert into WM_PLACE (PLACE_ID, URL, TITLE) values ($tbl2MaxId," . $local_dbh->quote($url) . ", " . $local_dbh->quote($title) . ")" );
-    };
 
-    if($@) {
+        $local_dbh->begin_work() or die $local_dbh->errstr;
 
-        print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
+        my ($dup_wm_place_url) = $local_dbh->selectrow_array("select b.url from WM_BOOKMARK a, WM_PLACE b where a.PLACE_ID = b.PLACE_ID and a.USER_ID = ? and b.URL = ? ",
+                                        {}, $user_id, $url);
 
-        # @@@@@@@@@ No disconnect
-        # $local_dbh->disconnect;
-        # @@@@@@@@@
+        if (defined($dup_wm_place_url)) {
+            die "Duplicate URL $url";
+            #$c->renderMainView(Error->new(150));
+            #return 0;
+        }
 
-        $c->renderMainView(Error->new(150)); 
-        return 0;
-    }
+        $local_dbh->do("insert into WM_PLACE (URL, TITLE) values (?,?)", {},  $url, $title );
+
+        my $place_id = $local_dbh->last_insert_id;
+
+        #Insert into WM_BOOKMARK the same  URL for WM_PLACE
+        ###################################################
+        $local_dbh->do("insert into WM_BOOKMARK (USER_ID, PLACE_ID, TITLE, DATEADDED) values (?,?,?,?)", {}, $user_id, $place_id, $title, $dateAdded );
     
-    #Insert into WM_BOOKMARK the same  URL for WM_PLACE
-    ####################################################
-    eval {
-        $local_dbh->do("insert into WM_BOOKMARK (BOOKMARK_ID, USER_ID, PLACE_ID, TITLE, DATEADDED) values ($tbl1MaxId, '$user_id', $tbl2MaxId," . $local_dbh->quote($title) . ", '$dateAdded' ) " );
+        $local_dbh->commit() or die $local_dbh->errstr;
     };
 
     if($@) {
 
         print STDERR "Failed DB Operation: $DBI::errstr\n" if($DEBUG);
 
-        # No disconnect
-        # $local_dbh->disconnect;
-        # @@@@@@@@@@@@@@@@@
+        $local_dbh->rollback();
 
-        $c->renderMainView(Error->new(150)); 
+        $c->renderMainView(Error->new(102)); 
         return 0;
 
     } else {
@@ -364,33 +354,33 @@ sub update_mark
     my $place_id;
 
     eval {
+        
+        $local_dbh->begin_work() or die $local_dbh->errstr;
 
-        #($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
         ($place_id)  = $local_dbh->selectrow_array("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
-    };
 
-    if ($@) 
-    {
-        $moLog->error("Db Error " . $DBI::errstr);
-        $c->renderMainView(Error->new(102)); 
-    }
+        $local_dbh->do(" update WM_BOOKMARK set TITLE = ? where BOOKMARK_ID = ? ", {}, $title, $bookmark_id);
 
-    eval {
+        $local_dbh->do(" update WM_PLACE set URL = ? where PLACE_ID = ? ", {}, $url, $place_id);
+        
+        $local_dbh->commit() or die $local_dbh->errstr;
 
-         $local_dbh->do(" update WM_BOOKMARK set TITLE = ? where BOOKMARK_ID = ? ", {}, $title, $bookmark_id);
-         $local_dbh->do(" update WM_PLACE set URL = ? where PLACE_ID = ? ", {}, $url, $place_id);
     };
 
     if ($@)
     {
+        $local_dbh->rollback();
+
         $moLog->error("Db Error " . $DBI::errstr);
+
         $c->renderMainView(Error->new(102)); 
+
         return 0; 
     }
    
     $c->renderMainView();
-    return 1;
 
+    return 1;
 }
 
 
@@ -406,30 +396,30 @@ sub delete_mark
 
     eval {
 
-	# ($place_id)  = $local_dbh->do("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
+        $local_dbh->begin_work() or die $local_dbh->errstr;
+
         ($place_id)  = $local_dbh->selectrow_array("select PLACE_ID from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
-    }; 
 
-    if ($@) 
-    {
-        $moLog->error("Db Error " . $DBI::errstr);
-        $c->renderMainView(Error->new(102)); 
-    }
+        $local_dbh->do(" delete from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
 
-    eval {
+        $local_dbh->do(" delete from WM_PLACE where PLACE_ID = ? ", {}, $place_id);
 
-         $local_dbh->do(" delete from WM_BOOKMARK where BOOKMARK_ID = ? ", {}, $bookmark_id);
-         $local_dbh->do(" delete from WM_PLACE where PLACE_ID = ? ", {}, $place_id);
+        $local_dbh->commit();
     };
 
     if ($@)
     {
+        $local_dbh->rollback();
+
         $moLog->error("Db Error " . $DBI::errstr);
+
         $c->renderMainView(Error->new(102)); 
+
         return 0; 
     }
    
     $c->renderMainView();
+
     return 1;
 }
 
@@ -437,7 +427,7 @@ sub delete_mark
 sub deltaPass
 {
     my $c = shift;
-    #my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth();
+
     my ($usr_id,$usr_name,$usr_pass) = $c->pre_auth2();
 
     if(not defined($usr_name))
@@ -448,7 +438,7 @@ sub deltaPass
     {
         my $dbh = $::dbh;
 
-        my $rc = $dbh->do("update WM_USER set user_passwd='" . $usr_pass . "'  where user_name='" . $usr_name . "' ");
+        my $rc = $dbh->do("update WM_USER set user_passwd = ? where user_name = ? ", {}, $usr_pass, $usr_name);
 
         if(not defined($rc))
         {
@@ -458,9 +448,7 @@ sub deltaPass
         {
             $c->renderMainView();   
        }
-    # No disconnect
-    # $dbh->disconnect();
-    # @@@@@@@@@@@@@@@@@@
+
     }
 
 }
@@ -563,8 +551,11 @@ sub authorize
 sub renderMainView
 {
     my $c = shift;
+
     my $errObj = shift;
+
     $c->stash(tabMap => \%tabMap);
+
     #JJExecPageSQL.pl
     $c->exec_page($errObj);
 }

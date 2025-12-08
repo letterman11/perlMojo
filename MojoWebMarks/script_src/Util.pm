@@ -17,13 +17,12 @@ use Mojo::Log;
 my $local_time_zone_nys = "America/New_York"; #for DateTime module does not do right if time zone is left off
 my $sep = File::Spec->catfile('', ''); # perl code kludge to get file path separator
 
-our $moLog = Mojo::Log->new(path => "$mojoMarks::Bin".$sep."logs".$sep."production.log");
+our $moLog = Mojo::Log->new(path => "$mojoMarks::untainted_bin".$sep."logs".$sep."production.log");
 
-#my $tmp_dir = "/tmp";
 my $tmp_dir = cwd;
 $tmp_dir .= $sep . "sessions";
 
-our $sessionDbConf = "$mojoMarks::Bin".$sep."sessionFile.dat"; 
+our $sessionDbConf = "$mojoMarks::untainted_bin".$sep."sessionFile.dat"; 
 
 BEGIN
 {
