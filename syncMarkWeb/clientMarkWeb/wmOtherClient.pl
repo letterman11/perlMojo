@@ -56,6 +56,8 @@ my $maxRuns =		$mark_init::confg{BOOKMAN}->{runs};
 my $logFile =		$mark_init::confg{BOOKMAN}->{logFile};
 my $dbConFile =     $mark_init::confg{BOOKMAN}->{dbConf};
 
+my $defaultPass =   $mark_init::confg{BOOKMAN}->{defaultPass};
+
 my %ATTR = (
                 LINK   => 'href',
                 DATE   => 'add_date',
@@ -220,10 +222,16 @@ sub insertDB_bookmarks
   
         LOG "----  returned USERID " . $userID . " ----------";
 
+
+
+
         if ($userID eq $defaultUserID) {
 
-           LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
-           next; 
+           LOG "---- CREATING LOCAL USER_NAME $userName  ----";
+           create_local_user($userName,$dbh);
+
+           #LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
+           #next; 
 
         }
 
@@ -270,6 +278,36 @@ sub insertDB_bookmarks
 	
 
 	LOG "-----------------INSERTDB CLient  End -----------------";
+
+}
+
+
+sub create_local_user 
+{
+    my $user_name = shift;
+    my $local_dbh = shift;
+
+    my $default_pw = $defaultPass;
+
+    
+    my $user_create_sql = qq@ 
+                    insert into wm_user (user_name,user_id,user_passwd) values (?,?,?)
+                    @; 
+                    
+    eval {
+         $local_dbh->do($user_create_sql, {}, $user_name, $user_name,$default_pw);
+    };
+
+    if ($@)
+    {
+        LOG "------------- error creating user $user_name $@ -----------------";
+        return 0;
+    }
+    else
+    {
+        LOG "-------- created $user_name successfully in local db ---------------";
+        return 1;
+    }
 
 }
 
