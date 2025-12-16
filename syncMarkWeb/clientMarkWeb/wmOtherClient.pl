@@ -229,6 +229,7 @@ sub insertDB_bookmarks
 
            LOG "---- CREATING LOCAL USER_NAME $userName  ----";
            create_local_user($userName,$dbh);
+           $userID = $userName;
 
            #LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
            #next; 
