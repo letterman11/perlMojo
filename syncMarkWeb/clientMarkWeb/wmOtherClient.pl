@@ -1,12 +1,15 @@
-#!/usr/bin/perl -w
-
-#----------------------------------------------------------#
-# author: angus brooks	     							   
-# script: wmOtherClient.pl									   
-# purpose: client script for webmarks  
-#----------------------------------------------------------#
+#!/usr/bin/env perl
 
 use strict;
+use warnings;
+use v5.10;
+
+#----------------------------------------------------------#
+# author: angus brooks -- ai refactor
+# script: wmOtherClient.pl
+# purpose: client script for webmarks synchronization
+#----------------------------------------------------------#
+
 use lib '.';
 
 BEGIN {
@@ -16,509 +19,399 @@ BEGIN {
 
 use lib $mark_init::confg{BOOKMAN}->{libdir};
 
-use IO::Socket;
+use IO::Socket::INET;
 use DbGlob;
 use Getopt::Long;
-use Encode 'encode';
-use Encode 'decode';
+use Encode qw(encode decode);
+use Try::Tiny;
 
+# Configuration constants
+use constant {
+    END_DATA_TOKEN => "####END_DATA####",
+    DEFAULT_USER_ID => "XXXXX",
+    DEFAULT_USER_NAME => "XXXX",
+};
 
-$| = 1;
-my %webMarks = ();
-my %net_webMarks = ();
-my %userTable = ();
+# Package variables
+my %webmarks = ();
+my %net_webmarks = ();
+my %user_table = ();
+my $log_fh;
 
-my $bmFileDir;
-my $DEBUG = 0;
-my $END_DATA = "####END_DATA####";
-my $true = 1;
-my $false = 0;
-my $trace;
-my $tracefile;
-my @opts = ("trace=s","tracefile=s");
-my %optctl = (trace =>\$trace, tracefile =>\$tracefile);
-my $run = 0;
-my $bmDB = "nothing";
-my $defaultUserID = "XXXXX"; 
-my $defaultUserName = "XXXX"; 
-
-
-
-my $remoteHost =	$mark_init::confg{BOOKMAN}->{remoteHost};
-#my $remotePort =	$mark_init::confg{BOOKMAN}->{remotePort};
-my $remotePort =	$mark_init::confg{BOOKMAN}->{remotePortOther};
-my $timeOut =		$mark_init::confg{BOOKMAN}->{timeOut};
-my $flags =	    	$mark_init::confg{BOOKMAN}->{flags};
-my $bufferSize =	$mark_init::confg{BOOKMAN}->{bufferSize};
-my $bmFileName =	$mark_init::confg{BOOKMAN}->{bmFileName};
-my $sleepInterval =	$mark_init::confg{BOOKMAN}->{sleepInterval};
-my $maxRuns =		$mark_init::confg{BOOKMAN}->{runs};
-my $logFile =		$mark_init::confg{BOOKMAN}->{logFile};
-my $dbConFile =     $mark_init::confg{BOOKMAN}->{dbConf};
-
-my $defaultPass =   $mark_init::confg{BOOKMAN}->{defaultPass};
-
-my %ATTR = (
-                LINK   => 'href',
-                DATE   => 'add_date',
-                TEXT  => 'text',
-                ID     => 'id',
+# Command line options
+my %options = (
+    trace => undef,
+    tracefile => undef,
+    debug => 0,
 );
 
-open (LOG_H, ">>$logFile") or die "cannot open $logFile: $!\n";
+GetOptions(
+    'trace=i' => \$options{trace},
+    'tracefile=s' => \$options{tracefile},
+    'debug' => \$options{debug},
+) or die "Error in command line arguments\n";
 
-LOG_H->autoflush(1);
+# Configuration
+my $config = $mark_init::confg{BOOKMAN};
 
-GetOptions(\%optctl,@opts);
+# Initialize logging
+open($log_fh, ">>", $config->{logFile}) 
+    or die "Cannot open log file $config->{logFile}: $!\n";
+$log_fh->autoflush(1);
 
-sub LOG
-{
-        my $message = shift;
-        print LOG_H date_time(), $message , "\n";
+#----------------------------------------------------------#
+# Utility Functions
+#----------------------------------------------------------#
+
+sub log_message {
+    my ($message) = @_;
+    my $timestamp = get_timestamp();
+    print {$log_fh} "$timestamp $message\n";
 }
 
-
-sub close_log
-{
-    close(LOG_H) or warn "Problems closing LOG file handle";
+sub get_timestamp {
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime(time);
+    $year += 1900;
+    my @months = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+    return sprintf("%s %d %d %02d:%02d:%02d", 
+                   $months[$mon], $mday, $year, $hour, $min, $sec);
 }
 
-sub queryDB_bookmarks
-{
-	LOG "-----------------QUERYDB CLient Begin -----------------";
-	my $dbFile = shift;
-	warn "$dbFile";
-	my $matchFlag = 0;
-	my ($link,$text,$date,$u_id) = (0,1,2,3);
-
-	my $dbg = DbGlob->new($dbConFile);
-
-	my $dbh = $dbg->connect() or die "Error $!\n";
-	
-	if ($trace && $tracefile)
-	{
-		$dbh->trace($trace, $tracefile);
-	} 
-	elsif($trace)
-	{
-		$dbh->trace($trace);
-	}
-                          # 0 link, 1 title, 2 date
-    my $sel_str = " select b.url, a.title, a.dateAdded, c.user_name from WM_BOOKMARK a,  \
-                WM_PLACE b, WM_USER c where a.user_id = c.user_id and a.PLACE_ID = b.PLACE_ID";
-
-	#load data (a.title, a.dataAdded, b.url) from join of WM_BOOKMARK and WM_PLACE tables
-
-	my $sth = $dbh->prepare($sel_str);
-
-	$sth->execute();
-
-	my $arrayrefs = $sth->fetchall_arrayref;
-
-	my $rowcount = $sth->rows;	
-
-	LOG "****ROWCOUNT: $rowcount\n";
-
-	foreach my $row (@$arrayrefs) 
-	{
-			my $url = $row->[$link];      # compound hash key
-            my $user_id = $row->[$u_id];  # url + user_id
-
-            my $agg_key = $url ."_". $user_id;
-
-			$webMarks{$agg_key} = {} unless  $webMarks{$agg_key};
-			$webMarks{$agg_key}->{LINK} = $url;
-			$webMarks{$agg_key}->{DATE} = $row->[$date];
-			$webMarks{$agg_key}->{TEXT} = $row->[$text];
-			$webMarks{$agg_key}->{ID} = $row->[$u_id];
-	}
-
-
-	$dbh->disconnect() or LOG "Disconnection failed: $DBI::errstr\n" and warn "Disconnection failed: $DBI::errstr\n";
-
-	LOG "-----------------QUERYDB CLient  End -----------------";
+sub log_separator {
+    my ($char, $message) = @_;
+    $char //= '=';
+    log_message($char x 120);
+    log_message($message) if $message;
+    log_message($char x 120);
 }
 
-sub populate_user_id($$)
-{
-    my $userName  = shift;
-    my $local_dbh = shift;
-    my $userID;
-    chomp($userName);
+#----------------------------------------------------------#
+# Database Functions
+#----------------------------------------------------------#
 
-
-    if (exists($userTable{$userName})) {
-        $userID = $userTable{$userName}; 
-        return $userID;
-    }
- 
-    ($userID) = $local_dbh->selectrow_array("select user_id from WM_USER where user_name = ?", {}, $userName);
-
-    if (defined($userID) && $userID !~ /^\s*$/) 
-    {
-        $userTable{$userName} = $userID;
-        return $userID;
-    } 
-    else
-    {
-        return $defaultUserID;
-    }
-
-}
-
-sub insertDB_bookmarks
-{
-	LOG "-----------------INSERTDB CLient  Begin -----------------";
-    #local database already queried and put in hash just do lookup
-
-
-	my $dbFile = shift;
-	my ($link,$text,$date,$user_id) = (0,1,2,3);
-
-	my $dbg = DbGlob->new($dbConFile);
-
-	my $dbh = $dbg->connect() or die "Error $!\n";
-
-	if ($trace && $tracefile)
-	{
-		$dbh->trace($trace, $tracefile);
-	} 
-	elsif($trace)
-	{
-		$dbh->trace($trace);
-	}
-
-	#load link column from DB if link does not equal
-	#to bookmark url, then find the max(bookmark_id) and max(place_id) from DB, increment by one for each table
-	#then insert bookmark_id, fk(place_id), title, dataAdded, lastMod into WM_BOOKMARK
-	#insert place_id, url, title into WM_PLACE.  should be enough to recreate a bookmark.
-	#forget the rest of tables/colums.
-	########################
-	# added insert of user_id into bookmark_id -- need scheme to insert rows from other sites that 
-    # match up user_id and names - some function/heuristic to solve this properly
-	##########################
-
-    my $userID;
-
-	LOG "-----------------INSERTDB CLient Comparison Routine Begin -----------------";
-	
-	foreach my $net_urlKey (keys %net_webMarks)
-	{
-
-		if (exists $webMarks{$net_urlKey})  #  DOES HASH FUNCTION LOOKUP OF URL -- NO NEED TO LOOP
-		{
-				next;
-		}
-
-	    LOG "-----------------INSERTDB CLient Match Routine Insert Statement Begin -----------------";
-
-		my $url = $net_webMarks{$net_urlKey}->{LINK};
-
-		my $title = $net_webMarks{$net_urlKey}->{TEXT};
-		my $dateAdded = $net_webMarks{$net_urlKey}->{DATE};
-        my $userName = $net_webMarks{$net_urlKey}->{ID};
-	        
-        my $userID = populate_user_id($userName, $dbh); 
-  
-        LOG "----  returned USERID " . $userID . " ----------";
-
-
-
-
-        if ($userID eq $defaultUserID) {
-
-           LOG "---- CREATING LOCAL USER_NAME $userName  ----";
-           create_local_user($userName,$dbh);
-           $userID = $userName;
-
-           #LOG "---- SKIPPING INSERTION  NO CORRESPONDING USERNAME ----";
-           #next; 
-
+sub get_db_connection {
+    my $dbg = DbGlob->new($config->{dbConf});
+    my $dbh = $dbg->connect() 
+        or die "Database connection failed: $!\n";
+    
+    if ($options{trace}) {
+        if ($options{tracefile}) {
+            $dbh->trace($options{trace}, $options{tracefile});
+        } else {
+            $dbh->trace($options{trace});
         }
+    }
+    
+    return $dbh;
+}
 
-        eval {
-            $dbh->begin_work;
-                
-            #------- wm_place------------------------
-            my $sql_insert_wm_place = "insert into WM_PLACE (URL, TITLE) values (?, ?)";
-                
-            my @bind_vals_place = ($url,
-                                    $title);
-
-            $dbh->do($sql_insert_wm_place, {}, @bind_vals_place);
-            #------- wm_place------------------------
-
-            my $last_place_id = $dbh->last_insert_id;
-            
-            #------- wm_bookmark------------------------
-            my $sql_insert_wm_book = "insert into WM_BOOKMARK (PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?)";
-
-            my @bind_vals_bookmark = ($last_place_id,
-                            $title,
-                            $dateAdded,
-                            $userID);
-
-            $dbh->do($sql_insert_wm_book, {}, @bind_vals_bookmark); 
-
-            #------- wm_bookmark------------------------
-                
-            $dbh->commit;
+sub query_local_bookmarks {
+    log_message("Querying local bookmarks database");
+    
+    my $dbh = get_db_connection();
+    
+    my $query = <<'SQL';
+        SELECT b.url, a.title, a.dateAdded, c.user_name 
+        FROM WM_BOOKMARK a
+        INNER JOIN WM_PLACE b ON a.PLACE_ID = b.PLACE_ID
+        INNER JOIN WM_USER c ON a.user_id = c.user_id
+SQL
+    
+    my $sth = $dbh->prepare($query);
+    $sth->execute();
+    
+    my $rows = $sth->fetchall_arrayref();
+    log_message("Retrieved " . scalar(@$rows) . " bookmarks from local database");
+    
+    %webmarks = ();  # Clear existing data
+    
+    foreach my $row (@$rows) {
+        my ($url, $title, $date_added, $user_name) = @$row;
+        my $key = "${url}_${user_name}";
+        
+        $webmarks{$key} = {
+            LINK => $url,
+            TEXT => $title,
+            DATE => $date_added,
+            ID => $user_name,
         };
+    }
+    
+    $dbh->disconnect() 
+        or log_message("Warning: Database disconnect failed: $DBI::errstr");
+}
 
+sub resolve_user_id {
+    my ($user_name, $dbh) = @_;
+    
+    chomp($user_name);
+
+    return DEFAULT_USER_ID unless $user_name;
+    
+    return $user_table{$user_name} if exists $user_table{$user_name};
+    
+    my ($user_id) = $dbh->selectrow_array(
+        "SELECT user_id FROM WM_USER WHERE user_name = ?",
+        {},
+        $user_name
+    );
+    
+    if (defined $user_id && $user_id !~ /^\s*$/) {
+        $user_table{$user_name} = $user_id;
+        return $user_id;
+    }
+    
+    return DEFAULT_USER_ID;
+}
+
+sub insert_remote_bookmarks {
+    log_message("Inserting new bookmarks from remote host");
+    
+    my $dbh = get_db_connection();
+    my $insert_count = 0;
+    
+    foreach my $net_key (keys %net_webmarks) {
+        # Skip if bookmark already exists locally
+        next if exists $webmarks{$net_key};
+        
+        my $bookmark = $net_webmarks{$net_key};
+        my $user_id = resolve_user_id($bookmark->{ID}, $dbh);
+        
+        if ($user_id eq DEFAULT_USER_ID) {
+            log_message("Skipping bookmark - no matching user for: $bookmark->{ID}");
+            next;
+        }
+        
+        eval {
+            #-- aab deleting next statements not necessary
+            # Get next IDs
+            #my ($bookmark_id) = $dbh->selectrow_array(
+            #    "SELECT MAX(BOOKMARK_ID) FROM WM_BOOKMARK"
+            #);
+            #my ($place_id) = $dbh->selectrow_array(
+            #    "SELECT MAX(PLACE_ID) FROM WM_PLACE"
+            #);
+            
+            #$bookmark_id++;
+            #$place_id++;
+            # 
+
+            # Insert into WM_PLACE
+            $dbh->do(
+                "INSERT INTO WM_PLACE (URL, TITLE) VALUES (?,?)",
+                {},
+                $bookmark->{LINK}, $bookmark->{TEXT}
+            );
+
+            my $place_id = $dbh->last_insert_id;
+
+            # Insert into WM_BOOKMARK
+            $dbh->do(
+                "INSERT INTO WM_BOOKMARK (PLACE_ID, TITLE, DATEADDED, USER_ID) VALUES (?,?,?,?)",
+                {},
+                $place_id, $bookmark->{TEXT}, $bookmark->{DATE}, $user_id
+            );
+            
+            $insert_count++;
+        };
+        
         if ($@) {
-        
-            $dbh->rollback;
-            LOG "---- DB error $@ -----"
+            log_message("Error inserting bookmark: $@");
         }
-
-		LOG "-----------------INSERTDB CLient Match Routine Insert Statement End -----------------";
-
-
-	}
-	
-	$dbh->disconnect() or LOG "Disconnection failed: $DBI::errstr\n" and warn "Disconnection failed: $DBI::errstr\n";
-	LOG "-----------------INSERTDB CLient Comparison Routine End -----------------";
-	
-
-	LOG "-----------------INSERTDB CLient  End -----------------";
-
-}
-
-
-sub create_local_user 
-{
-    my $user_name = shift;
-    my $local_dbh = shift;
-
-    my $default_pw = $defaultPass;
-
+    }
     
-    my $user_create_sql = qq@ 
-                    insert into wm_user (user_name,user_id,user_passwd) values (?,?,?)
-                    @; 
-                    
-    eval {
-         $local_dbh->do($user_create_sql, {}, $user_name, $user_name,$default_pw);
-    };
-
-    if ($@)
-    {
-        LOG "------------- error creating user $user_name $@ -----------------";
-        return 0;
-    }
-    else
-    {
-        LOG "-------- created $user_name successfully in local db ---------------";
-        return 1;
-    }
-
+    log_message("Inserted $insert_count new bookmarks");
+    $dbh->disconnect() 
+        or log_message("Warning: Database disconnect failed: $DBI::errstr");
 }
 
-sub build_data_from_buffer
-{
-        my $nwBuffer = shift;
-        my $bmBuffer = shift;
+#----------------------------------------------------------#
+# Network Functions
+#----------------------------------------------------------#
 
-        $$bmBuffer .= $nwBuffer;
-        return $true if (($nwBuffer =~ /$END_DATA/) || ($$bmBuffer =~ /$END_DATA/s));
-        return $false;
-
+sub create_socket_connection {
+    my $socket = IO::Socket::INET->new(
+        PeerAddr => $config->{remoteHost},
+        PeerPort => $config->{remotePortOther},
+        Proto => 'tcp',
+        Type => SOCK_STREAM,
+        Timeout => $config->{timeOut},
+    ) or die "Cannot connect to $config->{remoteHost}:$config->{remotePortOther}: $@\n";
+    
+    $socket->autoflush(1);
+    return $socket;
 }
 
-sub build_data_from_buffer_two
-{
-        my $nwBuffer = shift;
-        my $bmBuffer = shift;
+sub build_send_message {
+    my $message = '';
+    
+    foreach my $key (keys %webmarks) {
+        my $bm = $webmarks{$key};
+        $message .= join("\t", 
+            $bm->{LINK} // '',
+            $bm->{DATE} // '',
+            $bm->{TEXT} // '',
+            $bm->{ID} // ''
+        ) . "\n";
+    }
+    
+    $message .= END_DATA_TOKEN . "\n";
+    return encode('UTF-8', $message);
+}
 
-		CORE::state $prevBuffer;
-		 
-        $$bmBuffer .= $nwBuffer;
-				 
-		################### check across complement buffers for end data token
-		my $currBuffer = $nwBuffer;
-		my $xCrossbmBuffer = $prevBuffer . $currBuffer;
-		####################################################
+sub send_bookmarks {
+    my ($socket) = @_;
+    
+    my $message = build_send_message();
+    log_message("Sending " . length($message) . " bytes to server");
+    
+    $socket->send($message) 
+        or die "Cannot send to server: $!\n";
+}
+
+sub receive_bookmarks {
+    my ($socket) = @_;
+    
+    log_message("Receiving bookmarks from server");
+    
+    $socket->timeout(5000);
+    
+    my $buffer = '';
+    my $prev_chunk = '';
+    my $done = 0;
+    
+    while (!$done) {
+        my $chunk = '';
+        my $bytes_received = $socket->recv($chunk, $config->{bufferSize});
         
-        LOG " @@@@@@@ PREV BUFFER " . $prevBuffer if length($nwBuffer) == 0;
-		LOG "@@@@@@@@@@@@@@ BUFFER @@@@@@@@@ \n" . $xCrossbmBuffer  if $xCrossbmBuffer =~ /$END_DATA/s;
-		return $true if $xCrossbmBuffer =~ /$END_DATA/s;
-		$prevBuffer = $currBuffer;
-        return $false;
-
+        last unless defined $bytes_received && length($chunk) > 0;
+        
+        my $decoded_chunk = decode('UTF-8', $chunk);
+        $buffer .= $decoded_chunk;
+        
+        # Check for end token across buffer boundaries
+        my $cross_buffer = $prev_chunk . $decoded_chunk;
+        $done = 1 if $cross_buffer =~ /@{[END_DATA_TOKEN]}/;
+        
+        $prev_chunk = $decoded_chunk;
+    }
+    
+    log_message("Received " . length($buffer) . " bytes from server");
+    return $buffer;
 }
 
-
-sub extract_data_from_buffer
-{
-		my ($link,$date,$text,$id) = (0,1,2,3);
-        my $buffer = shift;
-
-        for my $line (split (/\n/, $buffer)) {
-
-		last if $line =~ /$END_DATA/;
-
-                my @bmSegments = split(/\t+/, $line);
-
-                $bmSegments[$link] =~ s/\s*\t*\n*//g;   #fix for dupes
-
-                next if not defined $bmSegments[$link];
-
-                my ($url,$user_id);
-
-                $url = $bmSegments[$link];     # compound hash key
-                $user_id = $bmSegments[$id];   # url + user_id
-
-                my $agg_key = $url ."_". $user_id;
-
-                $net_webMarks{$agg_key} = {};
-
-                $net_webMarks{$agg_key}->{LINK} = $bmSegments[$link] if $bmSegments[$link];
-                $net_webMarks{$agg_key}->{DATE} = $bmSegments[$date] if $bmSegments[$date];
-                $net_webMarks{$agg_key}->{TEXT} = $bmSegments[$text] if $bmSegments[$text];
-                $net_webMarks{$agg_key}->{ID} = $bmSegments[$id] ?  $bmSegments[$id] : " [] " ;
-        }
-
+sub parse_received_bookmarks {
+    my ($buffer) = @_;
+    
+    %net_webmarks = ();  # Clear existing data
+    
+    foreach my $line (split /\n/, $buffer) {
+        last if $line =~ /@{[END_DATA_TOKEN]}/;
+        
+        my @fields = split /\t+/, $line;
+        next unless $fields[0];  # Skip if no URL
+        
+        $fields[0] =~ s/\s*\t*\n*//g;  # Clean up URL
+        
+        my ($url, $date, $text, $user_id) = @fields;
+        my $key = "${url}_${user_id}";
+        
+        $net_webmarks{$key} = {
+            LINK => $url // '',
+            DATE => $date // '',
+            TEXT => $text // '',
+            ID => $user_id // '',
+        };
+    }
+    
+    log_message("Parsed " . scalar(keys %net_webmarks) . " remote bookmarks");
 }
 
-sub date_time
-{
-	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
-							localtime(time);
-	$year += 1900;
-	my @months = qw(Jan Feb Mar Apr May Jun July Aug Sept Oct Nov Dec);
-	return("$months[$mon] $mday $year $hour:$min:$sec ");
+#----------------------------------------------------------#
+# Main Synchronization Loop
+#----------------------------------------------------------#
+
+sub run_sync_cycle {
+    log_separator('=', "Start sync cycle: " . get_timestamp());
+    
+    #1 Reload configuration
+    #2 Query local database
+    #3 Connect to remote server
+    #4 Send local bookmarks
+    #5 Receive remote bookmarks
+    #6 Parse received data
+    #7 Insert new bookmarks
+    #8 Cleanup
+    #--------------------------
+
+    #1
+    mark_init::read_config();   
+    #2  
+    query_local_bookmarks();    
+    #3 
+    my $socket = create_socket_connection(); 
+    #4 
+    send_bookmarks($socket);    
+    #5 
+    my $buffer = receive_bookmarks($socket); 
+    #6 
+    parse_received_bookmarks($buffer);  
+    #7
+    insert_remote_bookmarks();          
+    #8 
+    $socket->close();       
+    
+    log_separator('=', "End sync cycle: " . get_timestamp());
 }
 
-#------------------------ Main ----------------------------#	
+#----------------------------------------------------------#
+# Main Program
+#----------------------------------------------------------#
 
-LOG "****** LOGGING INITIATED *******\n";
-	
+log_message("Webmarks synchronization client started");
+
+my $run_count = 0;
+my $max_runs = $config->{runs};
+
 while (1) {
-
-	LOG "=" x 120;
-	LOG "=============================== Start     ". date_time() . " =========================================================";
-	LOG "=" x 120;
-
-	mark_init::read_config();
-
-
-	###### query DBs
-	queryDB_bookmarks($bmDB);
-
-	my $socket = IO::Socket::INET->new( PeerAddr    => $remoteHost,
-                                                PeerPort        => $remotePort,
-                                                Proto           => "tcp",
-                                                Type            => SOCK_STREAM)
-                                                or LOG "Coudn't connect to $remoteHost:$remotePort : $@\n"
-                                                and die "Coudn't connect to $remoteHost:$remotePort : $@\n";
-
-	# code/decode socket for utf8 - Unicode
-    ### commented out binmode utf  because of intro of utf8 in lower encoding layers
-    # an error in perl 30.0 and up if used
-
-	#binmode($socket, ":encoding(UTF-8)");
-	#binmode($socket, ":bytes");
-
-	$socket->autoflush(1);
-
-    my $send_msg;
-
-    for my $bmKey (keys %webMarks) {
-	       $send_msg .= $webMarks{$bmKey}->{LINK} . "\t";
-	       $send_msg .= $webMarks{$bmKey}->{DATE} . "\t";
-	       $send_msg .= $webMarks{$bmKey}->{TEXT} . "\t";
-	       #$send_msg .= $webMarks{$bmKey}->{$ATTR{ID}} . "\t" if $webMarks{$bmKey}->{$ATTR{ID}};
-	       $send_msg .= $webMarks{$bmKey}->{ID} . "\t" if $webMarks{$bmKey}->{ID};
-	       $send_msg .= "\n";
-	}
-
-	$send_msg .= $END_DATA;
-	$send_msg .= "\n";
-
-    #=========== Encode send message ------- 
-    my $encoded_send_msg = encode('UTF-8', $send_msg);
-    #=========== Encode send message -------
-
-
-	LOG "**** LOG OF SENT MESSAGE ****************************************************************************";
- 	#LOG $send_msg;
-	LOG "**** END LOG OF SENT MESSAGE ************************************************************************";
-	
-	#$socket->send($send_msg) or LOG  "Cannot send to server \n"  and 
-	#			die "Cannot send to server \n";  # this will block until successful send or timeout			
-
-	$socket->send($encoded_send_msg) or LOG  "Cannot send to server \n"  and 
-				die "Cannot send to server \n";  # this will block until successful send or timeout			
-
-	LOG "Expecting recieve from server";
-
-	my $EOF=$false;
-	my $bmData;
-	my $bmBuffer;
-
-        $socket->timeout(5000); 
-	LOG "at begin of loop from server";
- 
-    do {
-        LOG "inside serv rec loop" unless $::inside++;
-
-		$bmData = ();
-
-		$socket->recv($bmData, $bufferSize);
-
-        $::dataSize = length($bmData);
-        LOG "size of data recv = " . $::dataSize;
-        
-		#======== Decoded buffer ----
-		my $decoded_bmData = decode('UTF-8', $bmData);
-		#======== Decoded buffer ----
-
-		#$EOF = build_data_from_buffer($bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
-		#$EOF = build_data_from_buffer($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
-		$EOF = build_data_from_buffer_two($decoded_bmData,\$bmBuffer) ; # last parm passed by ref for mod in func
- 
-		#debug_println("After recv of socket");
-	
-	}      
-	while((!$EOF) && ($::dataSize != 0));
-   
-
-
-    $::inside = 0;
-	LOG "just outside end loop from server";
-
-	LOG "**** LOG OF RECIEVED MESSAGE ****************************************************************************";
- 	#LOG $bmBuffer;
-	LOG "**** END LOG OF RECIEVED MESSAGE ************************************************************************";
-
-	extract_data_from_buffer($bmBuffer); 
-
-	LOG "Output of bookmarks to *nix\n";
-	
-	#output_bookmarks($bmFileName);
-
-	###### insert into firefox SQLiteDB
-	insertDB_bookmarks($bmDB);	
-
-	dump_bm() if $DEBUG;
-
-	
-	$socket->close();
-	LOG "=" x 120;
-	LOG "=" x 120;
-	LOG "=============================== RUN:  ".$run. " =========================================================";
-	LOG "=============================== Complete. ".  date_time(). " =========================================================";
-	LOG "=" x 120;
-
-
-    if (++$run == $maxRuns) 
-    {
-        LOG "@@@@@@@@ Exiting client script @@@@@@@@@@";
-        close_log(); 
-        exit(0);
+    eval {
+        run_sync_cycle();
+    };
+    
+    if ($@) {
+        log_message("Error during sync cycle: $@");
     }
+    
+    $run_count++;
+    log_message("Completed run $run_count of $max_runs");
+    
+    last if $run_count >= $max_runs;
+    
+    sleep($config->{sleepInterval});
+}
 
-    
-	sleep ($mark_init::confg{BOOKMAN}->{sleepInterval});	
-    
-}	
+log_message("Webmarks synchronization client exiting after $run_count runs");
+close($log_fh) or warn "Problems closing log file: $!";
+
+__END__
+
+=head1 NAME
+
+wmOtherClient.pl - Webmarks synchronization client
+
+=head1 SYNOPSIS
+
+    perl wmOtherClient.pl [options]
+
+    Options:
+        --trace=LEVEL       Enable DBI tracing at specified level
+        --tracefile=FILE    Write trace output to file
+        --debug             Enable debug mode
+
+=head1 DESCRIPTION
+
+This client synchronizes bookmarks between a local database and a remote server.
+It queries the local database, sends bookmarks to the remote server, receives
+remote bookmarks, and inserts new ones into the local database.
+
+=cut
