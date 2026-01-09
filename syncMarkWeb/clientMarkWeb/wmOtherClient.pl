@@ -236,39 +236,41 @@ sub insertDB_bookmarks
 
         }
 
+        eval {
+            $dbh->begin_work;
+                
+            #------- wm_place------------------------
+            my $sql_insert_wm_place = "insert into WM_PLACE (URL, TITLE) values (?, ?)";
+                
+            my @bind_vals_place = ($url,
+                                    $title);
 
-        #error checks later to be added
-		my ($tbl1MaxId) = $dbh->selectrow_array("select max(BOOKMARK_ID) from WM_BOOKMARK");
-		my ($tbl2MaxId) = $dbh->selectrow_array("select max(PLACE_ID) from WM_PLACE");
-			
-		$tbl1MaxId++;
-		$tbl2MaxId++;
+            $dbh->do($sql_insert_wm_place, {}, @bind_vals_place);
+            #------- wm_place------------------------
 
-			
-		#------- wm_bookmark------------------------
-		my $sql_insert_wm_book = "insert into WM_BOOKMARK (BOOKMARK_ID, PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?,?)";
-
-		my @bind_vals_bookmark = ($tbl1MaxId,
-						$tbl2MaxId,
-						$title,
-						$dateAdded,
-						$userID);
-
-		my $rc = $dbh->do($sql_insert_wm_book, {}, @bind_vals_bookmark); 
-
-		#------- wm_bookmark------------------------
-			
-		#------- wm_place------------------------
-		my $sql_insert_wm_place = "insert into WM_PLACE (PLACE_ID, URL, TITLE) values (?, ?, ?)";
+            my $last_place_id = $dbh->last_insert_id;
             
-		my @bind_vals_place = ($tbl2MaxId,
-								$url,
-								$title);
+            #------- wm_bookmark------------------------
+            my $sql_insert_wm_book = "insert into WM_BOOKMARK (PLACE_ID, TITLE, DATEADDED, USER_ID) values (?,?,?,?)";
 
-		my $rc2 = $dbh->do($sql_insert_wm_place, {}, @bind_vals_place);
-		#------- wm_place------------------------
-		# error checks later to be put in place
-		#######################################
+            my @bind_vals_bookmark = ($last_place_id,
+                            $title,
+                            $dateAdded,
+                            $userID);
+
+            $dbh->do($sql_insert_wm_book, {}, @bind_vals_bookmark); 
+
+            #------- wm_bookmark------------------------
+                
+            $dbh->commit;
+        };
+
+        if ($@) {
+        
+            $dbh->rollback;
+            LOG "---- DB error $@ -----"
+        }
+
 		LOG "-----------------INSERTDB CLient Match Routine Insert Statement End -----------------";
 
 
