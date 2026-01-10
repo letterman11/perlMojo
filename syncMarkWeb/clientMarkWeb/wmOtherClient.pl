@@ -178,8 +178,19 @@ sub insert_remote_bookmarks {
         my $user_id = resolve_user_id($bookmark->{ID}, $dbh);
         
         if ($user_id eq DEFAULT_USER_ID) {
-            log_message("Skipping bookmark - no matching user for: $bookmark->{ID}");
-            next;
+
+            log_message("Creating local user  for: $bookmark->{ID}");
+            if (create_local_user($bookmark->{ID}, $dbh))
+            {
+                $user_id = $bookmark->{ID};
+            }
+            else
+            {
+                log_message("DB Failed to create local id  for: $bookmark->{ID}");
+                next;
+            }
+            #log_message("Skipping bookmark - no matching user for: $bookmark->{ID}");
+            #next;
         }
         
         eval {
@@ -223,6 +234,33 @@ sub insert_remote_bookmarks {
     log_message("Inserted $insert_count new bookmarks");
     $dbh->disconnect() 
         or log_message("Warning: Database disconnect failed: $DBI::errstr");
+}
+
+sub create_local_user 
+{
+    my ($user_name,$local_dbh) = @_;
+
+    my $default_pw = $config->{defaultPass};
+
+    my $user_create_sql = qq@ 
+                    insert into wm_user (user_name,user_id,user_passwd) values (?,?,?)
+                    @;
+                    
+    eval {
+         $local_dbh->do($user_create_sql, {}, $user_name, $user_name,$default_pw);
+    };
+                                    
+    if ($@)
+    {
+        log_message("------------- error creating user $user_name $@ -----------------");
+        return 0;
+    }       
+    else    
+    {       
+        log_message("-------- created $user_name successfully in local db ---------------");
+        return 1;
+    }
+
 }
 
 #----------------------------------------------------------#
