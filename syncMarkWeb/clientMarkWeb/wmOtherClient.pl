@@ -194,18 +194,6 @@ sub insert_remote_bookmarks {
         }
         
         eval {
-            #-- aab deleting next statements not necessary
-            # Get next IDs
-            #my ($bookmark_id) = $dbh->selectrow_array(
-            #    "SELECT MAX(BOOKMARK_ID) FROM WM_BOOKMARK"
-            #);
-            #my ($place_id) = $dbh->selectrow_array(
-            #    "SELECT MAX(PLACE_ID) FROM WM_PLACE"
-            #);
-            
-            #$bookmark_id++;
-            #$place_id++;
-            # 
 
             # Insert into WM_PLACE
             $dbh->do(
