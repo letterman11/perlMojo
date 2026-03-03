@@ -195,6 +195,8 @@ sub insert_remote_bookmarks {
         
         eval {
 
+            $dbh->begin_work;
+
             # Insert into WM_PLACE
             $dbh->do(
                 "INSERT INTO WM_PLACE (URL, TITLE) VALUES (?,?)",
@@ -212,6 +214,8 @@ sub insert_remote_bookmarks {
             );
             
             $insert_count++;
+
+            $dbh->commit;
         };
         
         if ($@) {
